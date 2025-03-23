@@ -138,17 +138,21 @@ const GpaCalculator = () => {
     setIsCalculating(true);
     
     try {
-      const gradesData = grades.map(entry => {
+      // Transform the data to match backend expectations
+      const coursesData = grades.map(entry => {
         const course = courses.find(c => c.id === entry.courseId);
         return {
-          course_id: entry.courseId,
+          id: entry.courseId,
           grade: entry.grade,
           credit_hours: course?.creditHours
         };
       });
       
+      // Update API call to send the data in the format backend expects
       const response = await axios.post(`${API_BASE_URL}/calculate-gpa/`, {
-        grades: gradesData
+        courses: coursesData,
+        program_id: selection.programId,
+        academic_year: selection.academicYear
       });
       
       setGpa(response.data.gpa);
