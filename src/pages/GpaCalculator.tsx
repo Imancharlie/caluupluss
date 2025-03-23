@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -68,6 +69,13 @@ const GpaCalculator = () => {
     
     const parsedSelection = JSON.parse(selectionData);
     setSelection(parsedSelection);
+    
+    // Only show the notification if courses are not confirmed
+    if (parsedSelection.coursesConfirmed === false) {
+      setShowNotification(true);
+    } else {
+      setShowNotification(false);
+    }
     
     fetchCourses(parsedSelection);
   }, [navigate, toast]);
@@ -200,6 +208,12 @@ const GpaCalculator = () => {
       setFeedbackIssue("");
       setFeedbackDescription("");
       setShowNotification(false);
+      
+      // Update the selection to mark courses as confirmed
+      const updatedSelection = {...selection, coursesConfirmed: true};
+      sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
+      setSelection(updatedSelection);
+      
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast({
@@ -208,6 +222,20 @@ const GpaCalculator = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const confirmCourses = () => {
+    // Update the selection to mark courses as confirmed
+    const updatedSelection = {...selection, coursesConfirmed: true};
+    sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
+    setSelection(updatedSelection);
+    setShowNotification(false);
+    
+    toast({
+      title: "Courses Confirmed",
+      description: "Thank you for confirming the courses.",
+      variant: "default"
+    });
   };
 
   const containerVariants = {
@@ -273,7 +301,7 @@ const GpaCalculator = () => {
           </motion.div>
         )}
 
-        {showNotification && (
+        {showNotification && selection && !selection.coursesConfirmed && (
           <motion.div 
             className="bg-caluu-blue rounded-xl p-4 mb-8 shadow-lg flex items-center justify-between"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -286,7 +314,7 @@ const GpaCalculator = () => {
             </div>
             <div className="flex space-x-2 ml-4">
               <Button
-                onClick={() => setShowNotification(false)}
+                onClick={confirmCourses}
                 variant="outline"
                 className="bg-white text-caluu-blue hover:bg-white/90"
               >

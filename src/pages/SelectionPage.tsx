@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -18,6 +19,8 @@ interface Program {
 
 interface AcademicYear {
   year: number;
+  contains_electives: boolean;
+  courses_confirmed: boolean;
 }
 
 const SelectionPage = () => {
@@ -26,8 +29,11 @@ const SelectionPage = () => {
   
   const [collegeId, setCollegeId] = useState("");
   const [programId, setProgramId] = useState("");
+  const [programName, setProgramName] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [semester, setSemester] = useState("");
+  const [containsElectives, setContainsElectives] = useState(false);
+  const [coursesConfirmed, setCoursesConfirmed] = useState(false);
   
   const [colleges, setColleges] = useState<College[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -63,6 +69,7 @@ const SelectionPage = () => {
     
     setIsProgramsLoading(true);
     setProgramId("");
+    setProgramName("");
     setPrograms([]);
     
     try {
@@ -112,16 +119,42 @@ const SelectionPage = () => {
     fetchPrograms(selectedCollegeId);
     
     setProgramId("");
+    setProgramName("");
     setAcademicYear("");
     setSemester("");
+    setContainsElectives(false);
+    setCoursesConfirmed(false);
   };
 
   const handleProgramChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedProgramId = e.target.value;
     setProgramId(selectedProgramId);
+    
+    // Find the selected program to get its name
+    const selectedProgram = programs.find(program => program.id === selectedProgramId);
+    if (selectedProgram) {
+      setProgramName(selectedProgram.name);
+    }
+    
     fetchAcademicYears(selectedProgramId);
     
     setAcademicYear("");
+    setSemester("");
+    setContainsElectives(false);
+    setCoursesConfirmed(false);
+  };
+
+  const handleAcademicYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedYear = e.target.value;
+    setAcademicYear(selectedYear);
+    
+    // Find the selected year to get the electives and confirmed status
+    const selectedYearObj = years.find(year => year.year.toString() === selectedYear);
+    if (selectedYearObj) {
+      setContainsElectives(selectedYearObj.contains_electives);
+      setCoursesConfirmed(selectedYearObj.courses_confirmed);
+    }
+    
     setSemester("");
   };
 
@@ -140,8 +173,11 @@ const SelectionPage = () => {
     sessionStorage.setItem('selection', JSON.stringify({
       collegeId,
       programId,
+      programName,
       academicYear,
-      semester
+      semester,
+      containsElectives,
+      coursesConfirmed
     }));
 
     navigate("/calculator");
@@ -263,7 +299,7 @@ const SelectionPage = () => {
                 <select
                   id="year"
                   value={academicYear}
-                  onChange={(e) => setAcademicYear(e.target.value)}
+                  onChange={handleAcademicYearChange}
                   disabled={isYearsLoading || !programId}
                   className="form-select"
                 >
@@ -277,6 +313,7 @@ const SelectionPage = () => {
                   {years.map((year) => (
                     <option key={year.year} value={year.year.toString()}>
                       Year {year.year}
+                      {!year.courses_confirmed && " (Unconfirmed)"}
                     </option>
                   ))}
                 </select>
