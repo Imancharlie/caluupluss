@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -14,6 +13,7 @@ interface Course {
   code: string;
   name: string;
   creditHours: number;
+  isOptional?: boolean;
 }
 
 interface GradeEntry {
@@ -34,6 +34,7 @@ const GpaCalculator = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [gpa, setGpa] = useState<number | null>(null);
+  const [selectedElectives, setSelectedElectives] = useState<string[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -70,6 +71,12 @@ const GpaCalculator = () => {
     const parsedSelection = JSON.parse(selectionData);
     setSelection(parsedSelection);
     
+    // Load selected electives
+    const electivesData = sessionStorage.getItem("selectedElectives");
+    if (electivesData) {
+      setSelectedElectives(JSON.parse(electivesData));
+    }
+    
     // Only show the notification if courses are not confirmed
     if (parsedSelection.coursesConfirmed === false) {
       setShowNotification(true);
@@ -91,10 +98,27 @@ const GpaCalculator = () => {
         }
       });
       
-      const fetchedCourses = response.data;
-      setCourses(fetchedCourses);
+      const fetchedCourses = response.data.map((course: any) => ({
+        ...course,
+        isOptional: course.is_optional || false
+      }));
       
-      setGrades(fetchedCourses.map((course: Course) => ({
+      // Filter courses based on selected electives
+      const electivesData = sessionStorage.getItem("selectedElectives");
+      let selectedElectiveIds: string[] = [];
+      
+      if (electivesData) {
+        selectedElectiveIds = JSON.parse(electivesData);
+      }
+      
+      // Keep mandatory courses and only selected electives
+      const filteredCourses = fetchedCourses.filter((course: Course) => 
+        !course.isOptional || (course.isOptional && selectedElectiveIds.includes(course.id))
+      );
+      
+      setCourses(filteredCourses);
+      
+      setGrades(filteredCourses.map((course: Course) => ({
         courseId: course.id,
         grade: ""
       })));
@@ -271,7 +295,14 @@ const GpaCalculator = () => {
       >
         <div className="container-app flex items-center">
           <button 
-            onClick={() => navigate("/selection")}
+            onClick={() => {
+              const selectedElectives = sessionStorage.getItem("selectedElectives");
+              if (selectedElectives && JSON.parse(selectedElectives).length > 0) {
+                navigate("/elective-selection");
+              } else {
+                navigate("/selection");
+              }
+            }}
             className="flex items-center text-caluu-blue-dark hover:text-caluu-blue mr-4"
           >
             <ChevronLeft size={20} />
@@ -372,9 +403,12 @@ const GpaCalculator = () => {
                         key={course.id}
                         variants={itemVariants}
                         custom={index}
-                        className="hover:bg-gray-50 transition-colors"
+                        className={`hover:bg-gray-50 transition-colors ${course.isOptional ? 'bg-blue-50' : ''}`}
                       >
-                        <td className="py-4 pl-2 font-medium text-gray-900">{course.code}</td>
+                        <td className="py-4 pl-2 font-medium text-gray-900">
+                          {course.code}
+                          {course.isOptional && <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Elective</span>}
+                        </td>
                         <td className="py-4 text-gray-600">{course.name}</td>
                         <td className="py-4 text-center text-gray-600">{course.creditHours}</td>
                         <td className="py-4 text-center">

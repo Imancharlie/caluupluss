@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import SplashScreen from "./pages/SplashScreen";
 import SelectionPage from "./pages/SelectionPage";
+import ElectiveSelection from "./pages/ElectiveSelection";
 import GpaCalculator from "./pages/GpaCalculator";
 import AdminUpload from "./pages/AdminUpload";
 import AdminLogin from "./pages/AdminLogin";
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<SplashScreen />} />
             <Route path="/selection" element={<SelectionPage />} />
+            <Route path="/elective-selection" element={<ElectiveSelection />} />
             <Route path="/calculator" element={<GpaCalculator />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/upload" element={<AdminUpload />} />

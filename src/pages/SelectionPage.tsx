@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -130,7 +129,6 @@ const SelectionPage = () => {
     const selectedProgramId = e.target.value;
     setProgramId(selectedProgramId);
     
-    // Find the selected program to get its name
     const selectedProgram = programs.find(program => program.id === selectedProgramId);
     if (selectedProgram) {
       setProgramName(selectedProgram.name);
@@ -148,7 +146,6 @@ const SelectionPage = () => {
     const selectedYear = e.target.value;
     setAcademicYear(selectedYear);
     
-    // Find the selected year to get the electives and confirmed status
     const selectedYearObj = years.find(year => year.year.toString() === selectedYear);
     if (selectedYearObj) {
       setContainsElectives(selectedYearObj.contains_electives);
@@ -170,7 +167,7 @@ const SelectionPage = () => {
       return;
     }
 
-    sessionStorage.setItem('selection', JSON.stringify({
+    const selectionData = {
       collegeId,
       programId,
       programName,
@@ -178,9 +175,16 @@ const SelectionPage = () => {
       semester,
       containsElectives,
       coursesConfirmed
-    }));
+    };
 
-    navigate("/calculator");
+    sessionStorage.setItem('selection', JSON.stringify(selectionData));
+
+    if (containsElectives) {
+      navigate("/elective-selection");
+    } else {
+      sessionStorage.setItem("selectedElectives", JSON.stringify([]));
+      navigate("/calculator");
+    }
   };
 
   const isFormValid = collegeId && programId && academicYear && semester;
