@@ -1,12 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Check, AlertTriangle, ChevronLeft } from "lucide-react";
+import axios from "axios";
 
-// Types
+const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
+
 interface Course {
   id: string;
   code: string;
@@ -28,25 +29,19 @@ const GpaCalculator = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Selection state from previous page
   const [selection, setSelection] = useState<any>(null);
-  
-  // Courses and grades
   const [courses, setCourses] = useState<Course[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [gpa, setGpa] = useState<number | null>(null);
   
-  // Loading and UI states
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackIssue, setFeedbackIssue] = useState("");
   const [feedbackDescription, setFeedbackDescription] = useState("");
   
-  // Notification banner
   const [showNotification, setShowNotification] = useState(true);
 
-  // Grade points configuration
   const gradePoints: GradePoint[] = [
     { grade: "A", points: 5.0 },
     { grade: "B+", points: 4.5 },
@@ -58,9 +53,7 @@ const GpaCalculator = () => {
     { grade: "F", points: 0.0 }
   ];
 
-  // Initialize component with data
   useEffect(() => {
-    // Get selection from sessionStorage
     const selectionData = sessionStorage.getItem("selection");
     
     if (!selectionData) {
@@ -73,46 +66,43 @@ const GpaCalculator = () => {
       return;
     }
     
-    setSelection(JSON.parse(selectionData));
+    const parsedSelection = JSON.parse(selectionData);
+    setSelection(parsedSelection);
     
-    // Mock fetch courses - replace with actual API call
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      try {
-        // Mock data - replace with API call
-        setTimeout(() => {
-          const mockCourses: Course[] = [
-            { id: "1", code: "CSC1101", name: "Introduction to Programming", creditHours: 4 },
-            { id: "2", code: "CSC1102", name: "Discrete Mathematics", creditHours: 3 },
-            { id: "3", code: "CSC1103", name: "Computer Architecture", creditHours: 3 },
-            { id: "4", code: "CSC1104", name: "Introduction to Information Systems", creditHours: 3 },
-            { id: "5", code: "CSC1105", name: "Communication Skills", creditHours: 2 }
-          ];
-          
-          setCourses(mockCourses);
-          
-          // Initialize grades
-          setGrades(mockCourses.map(course => ({
-            courseId: course.id,
-            grade: ""
-          })));
-          
-          setIsLoading(false);
-        }, 1000);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load courses. Please try again.",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-      }
-    };
-
-    fetchCourses();
+    fetchCourses(parsedSelection);
   }, [navigate, toast]);
 
-  // Handle grade change
+  const fetchCourses = async (selection: any) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/courses/`, {
+        params: {
+          program_id: selection.programId,
+          academic_year: selection.academicYear,
+          semester: selection.semester
+        }
+      });
+      
+      const fetchedCourses = response.data;
+      setCourses(fetchedCourses);
+      
+      setGrades(fetchedCourses.map((course: Course) => ({
+        courseId: course.id,
+        grade: ""
+      })));
+      
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load courses. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGradeChange = (courseId: string, grade: string) => {
     setGrades(prevGrades => 
       prevGrades.map(entry => 
@@ -122,13 +112,10 @@ const GpaCalculator = () => {
       )
     );
     
-    // Reset GPA when grades change
     setGpa(null);
   };
 
-  // Calculate GPA
-  const calculateGpa = () => {
-    // Validate that all courses have grades
+  const calculateGpa = async () => {
     const missingGrades = grades.some(entry => !entry.grade);
     
     if (missingGrades) {
@@ -142,38 +129,40 @@ const GpaCalculator = () => {
     
     setIsCalculating(true);
     
-    // Mock API call for calculation - replace with actual API
-    setTimeout(() => {
-      let totalPoints = 0;
-      let totalCredits = 0;
-      
-      grades.forEach(entry => {
+    try {
+      const gradesData = grades.map(entry => {
         const course = courses.find(c => c.id === entry.courseId);
-        const gradePoint = gradePoints.find(gp => gp.grade === entry.grade);
-        
-        if (course && gradePoint) {
-          totalPoints += gradePoint.points * course.creditHours;
-          totalCredits += course.creditHours;
-        }
+        return {
+          course_id: entry.courseId,
+          grade: entry.grade,
+          credit_hours: course?.creditHours
+        };
       });
       
-      const calculatedGpa = totalCredits > 0 
-        ? Number((totalPoints / totalCredits).toFixed(2)) 
-        : 0;
+      const response = await axios.post(`${API_BASE_URL}/calculate-gpa/`, {
+        grades: gradesData
+      });
       
-      setGpa(calculatedGpa);
-      setIsCalculating(false);
+      setGpa(response.data.gpa);
       
       toast({
         title: "GPA Calculated",
-        description: `Your GPA is ${calculatedGpa}`,
+        description: `Your GPA is ${response.data.gpa}`,
         variant: "default"
       });
-    }, 800);
+    } catch (error) {
+      console.error("Error calculating GPA:", error);
+      toast({
+        title: "Calculation Error",
+        description: "There was an error calculating your GPA. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
-  // Submit feedback
-  const submitFeedback = () => {
+  const submitFeedback = async () => {
     if (!feedbackIssue) {
       toast({
         title: "Error",
@@ -192,20 +181,35 @@ const GpaCalculator = () => {
       return;
     }
     
-    // Mock API call - replace with actual API
-    toast({
-      title: "Feedback Submitted",
-      description: "Thank you for your feedback!",
-      variant: "default"
-    });
-    
-    setShowFeedbackModal(false);
-    setFeedbackIssue("");
-    setFeedbackDescription("");
-    setShowNotification(false);
+    try {
+      await axios.post(`${API_BASE_URL}/submit-feedback/`, {
+        issue_type: feedbackIssue,
+        description: feedbackDescription,
+        program_id: selection.programId,
+        academic_year: selection.academicYear,
+        semester: selection.semester
+      });
+      
+      toast({
+        title: "Feedback Submitted",
+        description: "Thank you for your feedback!",
+        variant: "default"
+      });
+      
+      setShowFeedbackModal(false);
+      setFeedbackIssue("");
+      setFeedbackDescription("");
+      setShowNotification(false);
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast({
+        title: "Submission Error",
+        description: "There was an error submitting your feedback. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -227,7 +231,6 @@ const GpaCalculator = () => {
 
   return (
     <div className="min-h-screen bg-caluu-blue-dark pb-12">
-      {/* Header */}
       <motion.div 
         className="bg-white py-4 px-6 shadow-md"
         initial={{ y: -100 }}
@@ -249,12 +252,11 @@ const GpaCalculator = () => {
             </h1>
           </div>
           
-          <div className="w-20"></div> {/* For balance */}
+          <div className="w-20"></div>
         </div>
       </motion.div>
 
       <div className="container-app py-8">
-        {/* Program Info */}
         {selection && (
           <motion.div 
             className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-white mb-8"
@@ -263,10 +265,7 @@ const GpaCalculator = () => {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-xl font-semibold mb-1">
-              {selection.programId === "101" ? "Bachelor of Science in Computer Science" : 
-               selection.programId === "102" ? "Bachelor of Science in Software Engineering" :
-               selection.programId === "103" ? "Bachelor of Information Technology" : 
-               "Selected Program"}
+              {selection.programName || "Selected Program"}
             </h2>
             <p className="text-white/70">
               Year {selection.academicYear} - Semester {selection.semester}
@@ -274,7 +273,6 @@ const GpaCalculator = () => {
           </motion.div>
         )}
 
-        {/* Notification */}
         {showNotification && (
           <motion.div 
             className="bg-caluu-blue rounded-xl p-4 mb-8 shadow-lg flex items-center justify-between"
@@ -305,7 +303,6 @@ const GpaCalculator = () => {
           </motion.div>
         )}
 
-        {/* Main Content */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
@@ -415,7 +412,6 @@ const GpaCalculator = () => {
         </div>
       </div>
 
-      {/* Feedback Modal */}
       {showFeedbackModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <motion.div 

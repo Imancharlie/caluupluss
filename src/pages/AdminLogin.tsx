@@ -1,9 +1,11 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import axios from "axios";
+
+const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -14,7 +16,6 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle login submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -29,36 +30,40 @@ const AdminLogin = () => {
     
     setIsLoading(true);
     
-    // Mock API call - replace with actual authentication API
-    setTimeout(() => {
-      // For demo purposes, use a simple check
-      if (username === "admin" && password === "password") {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/login/`, {
+        username,
+        password
+      });
+
+      if (response.data && response.data.token) {
         toast({
           title: "Login Successful",
           description: "Welcome to the admin dashboard.",
           variant: "default"
         });
         
-        // Store admin auth token in sessionStorage
-        sessionStorage.setItem("adminAuth", "true");
+        sessionStorage.setItem("adminAuth", response.data.token);
         
-        // Navigate to admin upload page
         navigate("/admin/upload");
       } else {
-        toast({
-          title: "Authentication Failed",
-          description: "Invalid username or password.",
-          variant: "destructive"
-        });
+        throw new Error("Invalid response format");
       }
+    } catch (error) {
+      console.error("Login error:", error);
       
+      toast({
+        title: "Authentication Failed",
+        description: "Invalid username or password.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
     <div className="min-h-screen bg-caluu-blue-dark flex flex-col">
-      {/* Header with back button */}
       <motion.div 
         className="p-4"
         initial={{ opacity: 0, y: -20 }}
@@ -74,7 +79,6 @@ const AdminLogin = () => {
         </button>
       </motion.div>
       
-      {/* Content */}
       <div className="flex-1 flex items-center justify-center px-4">
         <motion.div 
           className="w-full max-w-md"
@@ -118,7 +122,6 @@ const AdminLogin = () => {
             transition={{ duration: 0.5, delay: 0.6 }}
           >
             <form onSubmit={handleSubmit} className="p-6">
-              {/* Username Input */}
               <div className="mb-4">
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                   Username
@@ -134,7 +137,6 @@ const AdminLogin = () => {
                 />
               </div>
               
-              {/* Password Input */}
               <div className="mb-6">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Password
@@ -159,7 +161,6 @@ const AdminLogin = () => {
                 </div>
               </div>
               
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -174,14 +175,13 @@ const AdminLogin = () => {
             </form>
           </motion.div>
           
-          {/* Demo credentials */}
           <motion.div 
             className="mt-4 text-center text-white/60 text-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.8 }}
           >
-            <p>Demo credentials: username <span className="font-medium text-white/80">admin</span> / password <span className="font-medium text-white/80">password</span></p>
+            <p>Contact your administrator for credentials</p>
           </motion.div>
         </motion.div>
       </div>

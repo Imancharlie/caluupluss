@@ -4,6 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, Upload, FileText, CheckCircle, XCircle, Trash } from "lucide-react";
+import axios from "axios";
+
+// API base URL
+const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
 
 const AdminUpload = () => {
   const navigate = useNavigate();
@@ -24,25 +28,13 @@ const AdminUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   
-  // Mock data for dropdowns
-  const [colleges, setColleges] = useState([
-    { id: "1", name: "College of Computing and Information Sciences" },
-    { id: "2", name: "College of Engineering, Design, Art and Technology" },
-    { id: "3", name: "College of Business and Management Sciences" }
-  ]);
-  
-  const [programs, setPrograms] = useState([
-    { id: "101", name: "Bachelor of Science in Computer Science" },
-    { id: "102", name: "Bachelor of Science in Software Engineering" },
-    { id: "103", name: "Bachelor of Information Technology" }
-  ]);
-  
-  const [years, setYears] = useState([
-    { year: 1 },
-    { year: 2 },
-    { year: 3 },
-    { year: 4 }
-  ]);
+  // Data state
+  const [colleges, setColleges] = useState<{id: string, name: string}[]>([]);
+  const [programs, setPrograms] = useState<{id: string, name: string}[]>([]);
+  const [years, setYears] = useState<{year: number}[]>([]);
+  const [isCollegesLoading, setIsCollegesLoading] = useState(false);
+  const [isProgramsLoading, setIsProgramsLoading] = useState(false);
+  const [isYearsLoading, setIsYearsLoading] = useState(false);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -57,6 +49,8 @@ const AdminUpload = () => {
         navigate("/admin/login");
       } else {
         setIsAuthorized(true);
+        // Load colleges after auth check
+        fetchColleges();
       }
       setIsChecking(false);
     };
@@ -64,6 +58,97 @@ const AdminUpload = () => {
     // Add a slight delay to show animation
     setTimeout(checkAuth, 500);
   }, [navigate, toast]);
+
+  // Fetch colleges from API
+  const fetchColleges = async () => {
+    setIsCollegesLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/colleges/`);
+      setColleges(response.data);
+    } catch (error) {
+      console.error("Error fetching colleges:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load colleges. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCollegesLoading(false);
+    }
+  };
+
+  // Fetch programs based on college selection
+  const fetchPrograms = async (collegeId: string) => {
+    if (!collegeId) return;
+    
+    setIsProgramsLoading(true);
+    setProgramId("");
+    setPrograms([]);
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}/programs/`, {
+        params: { college_id: collegeId }
+      });
+      setPrograms(response.data);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load programs. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProgramsLoading(false);
+    }
+  };
+
+  // Fetch academic years based on program selection
+  const fetchAcademicYears = async (programId: string) => {
+    if (!programId) return;
+    
+    setIsYearsLoading(true);
+    setAcademicYear("");
+    setYears([]);
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}/academic-years/`, {
+        params: { program_id: programId }
+      });
+      setYears(response.data);
+    } catch (error) {
+      console.error("Error fetching academic years:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load academic years. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsYearsLoading(false);
+    }
+  };
+
+  // Handle college selection
+  const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedCollegeId = e.target.value;
+    setCollegeId(selectedCollegeId);
+    fetchPrograms(selectedCollegeId);
+    
+    // Reset dependent fields
+    setProgramId("");
+    setAcademicYear("");
+    setSemester("");
+  };
+
+  // Handle program selection
+  const handleProgramChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedProgramId = e.target.value;
+    setProgramId(selectedProgramId);
+    fetchAcademicYears(selectedProgramId);
+    
+    // Reset dependent fields
+    setAcademicYear("");
+    setSemester("");
+  };
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,17 +192,42 @@ const AdminUpload = () => {
     
     setIsUploading(true);
     
-    // Mock API call - replace with actual upload API
-    setTimeout(() => {
-      setIsUploading(false);
-      setUploadSuccess(true);
+    try {
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('college_id', collegeId);
+      formData.append('program_id', programId);
+      formData.append('academic_year', academicYear);
+      formData.append('semester', semester);
       
+      // Get auth token from session storage
+      const authToken = sessionStorage.getItem("adminAuth");
+      
+      // Send the file to your Django API endpoint
+      await axios.post(`${API_BASE_URL}/courses/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Token ${authToken}`
+        }
+      });
+      
+      setUploadSuccess(true);
       toast({
         title: "Upload Successful",
         description: "The course data has been uploaded successfully.",
         variant: "default"
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading the file. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   // Clear the file selection
@@ -241,10 +351,13 @@ const AdminUpload = () => {
                       <select
                         id="college"
                         value={collegeId}
-                        onChange={(e) => setCollegeId(e.target.value)}
+                        onChange={handleCollegeChange}
+                        disabled={isCollegesLoading}
                         className="form-select"
                       >
-                        <option value="">Select College</option>
+                        <option value="">
+                          {isCollegesLoading ? "Loading colleges..." : "Select College"}
+                        </option>
                         {colleges.map((college) => (
                           <option key={college.id} value={college.id}>
                             {college.name}
@@ -261,10 +374,17 @@ const AdminUpload = () => {
                       <select
                         id="program"
                         value={programId}
-                        onChange={(e) => setProgramId(e.target.value)}
+                        onChange={handleProgramChange}
+                        disabled={isProgramsLoading || !collegeId}
                         className="form-select"
                       >
-                        <option value="">Select Program</option>
+                        <option value="">
+                          {isProgramsLoading 
+                            ? "Loading programs..." 
+                            : collegeId 
+                              ? "Select Program" 
+                              : "Please select a college first"}
+                        </option>
                         {programs.map((program) => (
                           <option key={program.id} value={program.id}>
                             {program.name}
@@ -282,11 +402,18 @@ const AdminUpload = () => {
                         id="year"
                         value={academicYear}
                         onChange={(e) => setAcademicYear(e.target.value)}
+                        disabled={isYearsLoading || !programId}
                         className="form-select"
                       >
-                        <option value="">Select Year</option>
+                        <option value="">
+                          {isYearsLoading 
+                            ? "Loading years..." 
+                            : programId 
+                              ? "Select Year" 
+                              : "Please select a program first"}
+                        </option>
                         {years.map((year) => (
-                          <option key={year.year} value={year.year}>
+                          <option key={year.year} value={year.year.toString()}>
                             Year {year.year}
                           </option>
                         ))}
@@ -302,9 +429,12 @@ const AdminUpload = () => {
                         id="semester"
                         value={semester}
                         onChange={(e) => setSemester(e.target.value)}
+                        disabled={!academicYear}
                         className="form-select"
                       >
-                        <option value="">Select Semester</option>
+                        <option value="">
+                          {academicYear ? "Select Semester" : "Please select an academic year first"}
+                        </option>
                         <option value="1">Semester 1</option>
                         <option value="2">Semester 2</option>
                       </select>

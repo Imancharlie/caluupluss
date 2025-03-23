@@ -1,10 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import axios from "axios";
 
-// Types
+const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
+
 interface College {
   id: string;
   name: string;
@@ -23,36 +24,28 @@ const SelectionPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Form state
   const [collegeId, setCollegeId] = useState("");
   const [programId, setProgramId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [semester, setSemester] = useState("");
   
-  // Data state
   const [colleges, setColleges] = useState<College[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [years, setYears] = useState<AcademicYear[]>([]);
   
-  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isProgramsLoading, setIsProgramsLoading] = useState(false);
   const [isYearsLoading, setIsYearsLoading] = useState(false);
 
-  // Mock API calls - replace with real API calls when connecting to backend
   useEffect(() => {
     const fetchColleges = async () => {
+      setIsLoading(true);
       try {
-        // Mock data - replace with API call
-        setTimeout(() => {
-          setColleges([
-            { id: "1", name: "College of Computing and Information Sciences" },
-            { id: "2", name: "College of Engineering, Design, Art and Technology" },
-            { id: "3", name: "College of Business and Management Sciences" }
-          ]);
-          setIsLoading(false);
-        }, 800);
+        const response = await axios.get(`${API_BASE_URL}/colleges/`);
+        setColleges(response.data);
+        setIsLoading(false);
       } catch (error) {
+        console.error("Error fetching colleges:", error);
         toast({
           title: "Error",
           description: "Failed to load colleges. Please try again.",
@@ -73,22 +66,18 @@ const SelectionPage = () => {
     setPrograms([]);
     
     try {
-      // Mock data - replace with API call
-      setTimeout(() => {
-        const mockPrograms = [
-          { id: "101", name: "Bachelor of Science in Computer Science" },
-          { id: "102", name: "Bachelor of Science in Software Engineering" },
-          { id: "103", name: "Bachelor of Information Technology" }
-        ];
-        setPrograms(mockPrograms);
-        setIsProgramsLoading(false);
-      }, 600);
+      const response = await axios.get(`${API_BASE_URL}/programs/`, {
+        params: { college_id: collegeId }
+      });
+      setPrograms(response.data);
     } catch (error) {
+      console.error("Error fetching programs:", error);
       toast({
         title: "Error",
         description: "Failed to load programs. Please try again.",
         variant: "destructive"
       });
+    } finally {
       setIsProgramsLoading(false);
     }
   };
@@ -101,50 +90,41 @@ const SelectionPage = () => {
     setYears([]);
     
     try {
-      // Mock data - replace with API call
-      setTimeout(() => {
-        setYears([
-          { year: 1 },
-          { year: 2 },
-          { year: 3 },
-          { year: 4 }
-        ]);
-        setIsYearsLoading(false);
-      }, 600);
+      const response = await axios.get(`${API_BASE_URL}/academic-years/`, {
+        params: { program_id: programId }
+      });
+      setYears(response.data);
     } catch (error) {
+      console.error("Error fetching academic years:", error);
       toast({
         title: "Error",
         description: "Failed to load academic years. Please try again.",
         variant: "destructive"
       });
+    } finally {
       setIsYearsLoading(false);
     }
   };
 
-  // Handle college selection
   const handleCollegeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedCollegeId = e.target.value;
     setCollegeId(selectedCollegeId);
     fetchPrograms(selectedCollegeId);
     
-    // Reset dependent fields
     setProgramId("");
     setAcademicYear("");
     setSemester("");
   };
 
-  // Handle program selection
   const handleProgramChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedProgramId = e.target.value;
     setProgramId(selectedProgramId);
     fetchAcademicYears(selectedProgramId);
     
-    // Reset dependent fields
     setAcademicYear("");
     setSemester("");
   };
 
-  // Form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -157,7 +137,6 @@ const SelectionPage = () => {
       return;
     }
 
-    // Save selection to sessionStorage for use in GPA calculator
     sessionStorage.setItem('selection', JSON.stringify({
       collegeId,
       programId,
@@ -165,14 +144,11 @@ const SelectionPage = () => {
       semester
     }));
 
-    // Navigate to GPA calculator with selected data
     navigate("/calculator");
   };
 
-  // Check if form is valid
   const isFormValid = collegeId && programId && academicYear && semester;
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -232,7 +208,6 @@ const SelectionPage = () => {
               animate="visible"
               className="space-y-6"
             >
-              {/* College Selection */}
               <motion.div variants={itemVariants}>
                 <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-1">
                   College
@@ -244,7 +219,9 @@ const SelectionPage = () => {
                   disabled={isLoading}
                   className="form-select"
                 >
-                  <option value="">Select College</option>
+                  <option value="">
+                    {isLoading ? "Loading colleges..." : "Select College"}
+                  </option>
                   {colleges.map((college) => (
                     <option key={college.id} value={college.id}>
                       {college.name}
@@ -253,7 +230,6 @@ const SelectionPage = () => {
                 </select>
               </motion.div>
 
-              {/* Program Selection */}
               <motion.div variants={itemVariants}>
                 <label htmlFor="program" className="block text-sm font-medium text-gray-700 mb-1">
                   Program
@@ -280,7 +256,6 @@ const SelectionPage = () => {
                 </select>
               </motion.div>
 
-              {/* Academic Year Selection */}
               <motion.div variants={itemVariants}>
                 <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
                   Academic Year
@@ -300,14 +275,13 @@ const SelectionPage = () => {
                         : "Please select a program first"}
                   </option>
                   {years.map((year) => (
-                    <option key={year.year} value={year.year}>
+                    <option key={year.year} value={year.year.toString()}>
                       Year {year.year}
                     </option>
                   ))}
                 </select>
               </motion.div>
 
-              {/* Semester Selection */}
               <motion.div variants={itemVariants}>
                 <label htmlFor="semester" className="block text-sm font-medium text-gray-700 mb-1">
                   Semester
@@ -327,7 +301,6 @@ const SelectionPage = () => {
                 </select>
               </motion.div>
 
-              {/* Submit Button */}
               <motion.div variants={itemVariants}>
                 <button
                   type="submit"
@@ -345,7 +318,6 @@ const SelectionPage = () => {
           </form>
         </motion.div>
 
-        {/* Admin Access Link */}
         <motion.div 
           className="text-center mt-6"
           initial={{ opacity: 0 }}
