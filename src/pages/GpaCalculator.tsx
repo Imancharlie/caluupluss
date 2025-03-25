@@ -8,11 +8,28 @@ import axios from "axios";
 
 const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
 
+interface AcademicYearInfo {
+  program_name: string;
+  year: number;
+  program_id: number;
+}
+
+interface ApiCourse {
+  id: string;
+  code: string;
+  name: string;
+  credit_hours: string;
+  academic_year_info: AcademicYearInfo;
+  optional: boolean;
+  semester: string;
+}
+
 interface Course {
   id: string;
   code: string;
   name: string;
   credit_hours: number;
+  academic_year_info: AcademicYearInfo;
   is_elective?: boolean;
 }
 
@@ -32,15 +49,8 @@ interface Selection {
   academicYearId: string;
   academicYear: number;
   semester: number;
-  coursesConfirmed?: boolean;
-}
-
-interface ApiCourse {
-  id: string;
-  code: string;
-  name: string;
-  credit_hours: number;
-  is_optional: boolean;
+  containsElectives: boolean;
+  coursesConfirmed: boolean;
 }
 
 const GpaCalculator = () => {
@@ -83,7 +93,8 @@ const GpaCalculator = () => {
       return;
     }
     
-    const parsedSelection = JSON.parse(selectionData) as Selection;
+    const parsedSelection = JSON.parse(selectionData);
+    console.log('Loaded selection:', parsedSelection); // Debug log
     setSelection(parsedSelection);
     
     // Load selected electives
@@ -110,15 +121,23 @@ const GpaCalculator = () => {
         program_id: selection.programId,
         academic_year_id: selection.academicYearId,
         semester: selection.semester.toString(),
-        program_name: selection.programName,
         optional: "false" // Only fetch core courses
       };
 
       const coreUrl = `${API_BASE_URL}/courses/?${new URLSearchParams(coreParams).toString()}`;
       console.log('Fetching core courses from:', coreUrl);
 
-      const coreResponse = await axios.get(coreUrl);
+      const coreResponse = await axios.get<ApiCourse[]>(coreUrl);
       console.log('Core courses response:', coreResponse.data);
+
+      // Update program name from the first course's academic_year_info
+      if (coreResponse.data.length > 0 && coreResponse.data[0].academic_year_info) {
+        const programName = coreResponse.data[0].academic_year_info.program_name;
+        // Update selection with the correct program name
+        const updatedSelection = { ...selection, programName };
+        setSelection(updatedSelection);
+        sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
+      }
 
       // Then fetch elective courses
       const electiveParams = {
@@ -131,23 +150,36 @@ const GpaCalculator = () => {
       const electiveUrl = `${API_BASE_URL}/select-electives/?${new URLSearchParams(electiveParams).toString()}`;
       console.log('Fetching elective courses from:', electiveUrl);
 
-      const electiveResponse = await axios.get(electiveUrl);
+      const electiveResponse = await axios.get<ApiCourse[]>(electiveUrl);
       console.log('Elective courses response:', electiveResponse.data);
       
       // Get selected electives from session storage
       const selectedElectivesData = sessionStorage.getItem("selectedElectives");
       const selectedElectiveIds = selectedElectivesData ? JSON.parse(selectedElectivesData) : [];
       
-      // Filter elective courses to only include selected ones
-      const selectedElectiveCourses = electiveResponse.data.filter((course: Course) => 
-        selectedElectiveIds.includes(course.id)
-      ).map((course: Course) => ({
-        ...course,
-        is_elective: true // Mark as elective for UI distinction
+      // Filter elective courses to only include selected ones and format them
+      const selectedElectiveCourses = electiveResponse.data
+        .filter((course: ApiCourse) => selectedElectiveIds.includes(course.id))
+        .map((course: ApiCourse): Course => ({
+          id: course.id,
+          code: course.code,
+          name: course.name,
+          credit_hours: parseFloat(course.credit_hours),
+          academic_year_info: course.academic_year_info,
+          is_elective: true
+        }));
+      
+      // Format core courses
+      const formattedCoreCourses = coreResponse.data.map((course: ApiCourse): Course => ({
+        id: course.id,
+        code: course.code,
+        name: course.name,
+        credit_hours: parseFloat(course.credit_hours),
+        academic_year_info: course.academic_year_info
       }));
       
       // Combine core courses with selected elective courses
-      const allCourses = [...coreResponse.data, ...selectedElectiveCourses];
+      const allCourses = [...formattedCoreCourses, ...selectedElectiveCourses];
       
       setCourses(allCourses);
       
@@ -360,7 +392,7 @@ const GpaCalculator = () => {
       </motion.div>
 
       <div className="container-app py-4 sm:py-8">
-        {selection && (
+        {selection && courses.length > 0 && (
           <motion.div 
             className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 text-white mb-4 sm:mb-8"
             initial={{ opacity: 0, y: 20 }}
@@ -368,11 +400,12 @@ const GpaCalculator = () => {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-lg sm:text-xl font-semibold mb-1">
-              {selection.programName || "Selected Program"}
+              {courses[0]?.academic_year_info?.program_name || selection.programName}
             </h2>
-            <p className="text-sm sm:text-base text-white/70">
-              Year {selection.academicYear} - Semester {selection.semester}
-            </p>
+            <div className="text-sm sm:text-base text-white/70">
+              <p>Year {courses[0]?.academic_year_info?.year || selection.academicYear}</p>
+              <p>Semester {selection.semester}</p>
+            </div>
           </motion.div>
         )}
 

@@ -189,7 +189,7 @@ const SelectionPage = () => {
       // Save selection to session storage
       const selection = {
         programId: programId,
-        programName: programs.find(p => p.id === programId)?.name || "",
+        programName: programName,  // Use the programName from state
         academicYearId: academicYearId,
         academicYear: parseInt(academicYear),
         semester: parseInt(semester),
@@ -197,6 +197,7 @@ const SelectionPage = () => {
         coursesConfirmed: coursesConfirmed
       };
       
+      console.log('Saving selection:', selection);  // Debug log
       sessionStorage.setItem("selection", JSON.stringify(selection));
       
       // If there are electives, navigate to elective selection
