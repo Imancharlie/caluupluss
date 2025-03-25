@@ -17,6 +17,7 @@ interface Program {
 }
 
 interface AcademicYear {
+  id: string;
   year: number;
   contains_electives: boolean;
   courses_confirmed: boolean;
@@ -29,6 +30,7 @@ const SelectionPage = () => {
   const [collegeId, setCollegeId] = useState("");
   const [programId, setProgramId] = useState("");
   const [programName, setProgramName] = useState("");
+  const [academicYearId, setAcademicYearId] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [semester, setSemester] = useState("");
   const [containsElectives, setContainsElectives] = useState(false);
@@ -92,6 +94,7 @@ const SelectionPage = () => {
     if (!programId) return;
     
     setIsYearsLoading(true);
+    setAcademicYearId("");
     setAcademicYear("");
     setYears([]);
     
@@ -119,7 +122,7 @@ const SelectionPage = () => {
     
     setProgramId("");
     setProgramName("");
-    setAcademicYear("");
+    setAcademicYearId("");
     setSemester("");
     setContainsElectives(false);
     setCoursesConfirmed(false);
@@ -136,18 +139,19 @@ const SelectionPage = () => {
     
     fetchAcademicYears(selectedProgramId);
     
-    setAcademicYear("");
+    setAcademicYearId("");
     setSemester("");
     setContainsElectives(false);
     setCoursesConfirmed(false);
   };
 
   const handleAcademicYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedYear = e.target.value;
-    setAcademicYear(selectedYear);
+    const selectedYearId = e.target.value;
+    setAcademicYearId(selectedYearId);
     
-    const selectedYearObj = years.find(year => year.year.toString() === selectedYear);
+    const selectedYearObj = years.find(year => year.id === selectedYearId);
     if (selectedYearObj) {
+      setAcademicYear(selectedYearObj.year.toString());
       setContainsElectives(selectedYearObj.contains_electives);
       setCoursesConfirmed(selectedYearObj.courses_confirmed);
     }
@@ -155,39 +159,66 @@ const SelectionPage = () => {
     setSemester("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!collegeId || !programId || !academicYear || !semester) {
+    if (!programId || !academicYearId || !semester) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all fields before proceeding.",
+        title: "Missing Information",
+        description: "Please select all required fields",
         variant: "destructive"
       });
       return;
     }
 
-    const selectionData = {
-      collegeId,
-      programId,
-      programName,
-      academicYear,
-      semester,
-      containsElectives,
-      coursesConfirmed
-    };
+    try {
+      // First check if there are elective courses
+      const electiveParams = {
+        program_id: programId,
+        academic_year_id: academicYearId,
+        semester: semester.toString(),
+        optional: "true"
+      };
 
-    sessionStorage.setItem('selection', JSON.stringify(selectionData));
+      const electiveUrl = `${API_BASE_URL}/select-electives/?${new URLSearchParams(electiveParams).toString()}`;
+      console.log('Checking elective courses at:', electiveUrl);
 
-    if (containsElectives) {
-      navigate("/elective-selection");
-    } else {
-      sessionStorage.setItem("selectedElectives", JSON.stringify([]));
-      navigate("/calculator");
+      const electiveResponse = await axios.get(electiveUrl);
+      const hasElectives = electiveResponse.data && electiveResponse.data.length > 0;
+
+      // Save selection to session storage
+      const selection = {
+        programId: programId,
+        programName: programs.find(p => p.id === programId)?.name || "",
+        academicYearId: academicYearId,
+        academicYear: parseInt(academicYear),
+        semester: parseInt(semester),
+        containsElectives: hasElectives,
+        coursesConfirmed: coursesConfirmed
+      };
+      
+      sessionStorage.setItem("selection", JSON.stringify(selection));
+      
+      // If there are electives, navigate to elective selection
+      // If no electives, navigate directly to GPA calculator
+      if (hasElectives) {
+        navigate("/elective-selection");
+      } else {
+        // Set empty array for selected electives since there are none
+        sessionStorage.setItem("selectedElectives", JSON.stringify([]));
+        navigate("/calculator");
+      }
+    } catch (error) {
+      console.error("Error checking elective courses:", error);
+      toast({
+        title: "Error",
+        description: "Failed to check elective courses. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
-  const isFormValid = collegeId && programId && academicYear && semester;
+  const isFormValid = collegeId && programId && academicYearId && semester;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -223,7 +254,7 @@ const SelectionPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
           >
-            Academic Selection
+            GPA CALCULATOR
           </motion.h1>
           <motion.p 
             className="text-white/70"
@@ -231,7 +262,7 @@ const SelectionPage = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            Select your college, program, year, and semester
+           
           </motion.p>
         </div>
 
@@ -302,7 +333,7 @@ const SelectionPage = () => {
                 </label>
                 <select
                   id="year"
-                  value={academicYear}
+                  value={academicYearId}
                   onChange={handleAcademicYearChange}
                   disabled={isYearsLoading || !programId}
                   className="form-select"
@@ -315,7 +346,7 @@ const SelectionPage = () => {
                         : "Please select a program first"}
                   </option>
                   {years.map((year) => (
-                    <option key={year.year} value={year.year.toString()}>
+                    <option key={year.id} value={year.id}>
                       Year {year.year}
                       {!year.courses_confirmed && " (Unconfirmed)"}
                     </option>
@@ -331,11 +362,11 @@ const SelectionPage = () => {
                   id="semester"
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
-                  disabled={!academicYear}
+                  disabled={!academicYearId}
                   className="form-select"
                 >
                   <option value="">
-                    {academicYear ? "Select Semester" : "Please select an academic year first"}
+                    {academicYearId ? "Select Semester" : "Please select an academic year first"}
                   </option>
                   <option value="1">Semester 1</option>
                   <option value="2">Semester 2</option>
@@ -365,12 +396,7 @@ const SelectionPage = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.5 }}
         >
-          <button 
-            onClick={() => navigate("/admin/login")}
-            className="text-white/60 hover:text-white text-sm transition-colors duration-300"
-          >
-            Admin Access
-          </button>
+         
         </motion.div>
       </motion.div>
     </div>
