@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '@/lib/axios';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -102,8 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("AuthContext: Login error:", error);
       const axiosError = error as AxiosError<ApiError>;
-      const errorMessage = axiosError.response?.data?.error || 'Failed to sign in';
-      toast.error(errorMessage);
+      
+      if (axiosError.code === 'ERR_NETWORK') {
+        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+      } else {
+        const errorMessage = axiosError.response?.data?.error || 'Failed to sign in';
+        toast.error(errorMessage);
+      }
+      
       throw error;
     }
   };
@@ -145,8 +152,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("AuthContext: Registration error:", error);
       const axiosError = error as AxiosError<ApiError>;
-      const errorMessage = axiosError.response?.data?.error || 'Failed to register';
-      toast.error(errorMessage);
+      
+      if (axiosError.code === 'ERR_NETWORK') {
+        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+      } else {
+        const errorMessage = axiosError.response?.data?.error || 'Failed to register';
+        toast.error(errorMessage);
+      }
+      
       throw error;
     }
   };

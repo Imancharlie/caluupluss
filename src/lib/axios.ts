@@ -1,7 +1,8 @@
 
 import axios from 'axios';
+import { toast } from 'sonner';
 
-const API_BASE_URL = 'https://caluu.pythonanywhere.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://caluu.pythonanywhere.com/api';
 
 // Create axios instance
 const axiosInstance = axios.create({
@@ -10,13 +11,14 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // Add a timeout of 10 seconds
 });
 
 // Add a request interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
     // Add some logging to help debug
-    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
+    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
     
     const token = localStorage.getItem('token');
     if (token) {
@@ -39,6 +41,12 @@ axiosInstance.interceptors.response.use(
   },
   (error) => {
     console.error('Response error:', error);
+    
+    // Handle network errors
+    if (error.code === 'ERR_NETWORK') {
+      toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+      return Promise.reject(error);
+    }
     
     if (error.response) {
       // Handle 401 Unauthorized errors

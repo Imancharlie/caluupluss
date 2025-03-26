@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -32,48 +32,46 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/" element={<SplashScreen />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route 
-                path="/selection" 
-                element={
-                  <ProtectedRoute>
-                    <SelectionPage />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/elective-selection" 
-                element={
-                  <ProtectedRoute>
-                    <ElectiveSelection />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/calculator" 
-                element={
-                  <ProtectedRoute>
-                    <GpaCalculator />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route 
-                path="/admin/upload" 
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminUpload />
-                  </ProtectedRoute>
-                } 
-              />
-              {/* Fallback route for unknown paths */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
+          <Routes>
+            <Route path="/" element={<SplashScreen />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route 
+              path="/selection" 
+              element={
+                <ProtectedRoute>
+                  <SelectionPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/elective-selection" 
+              element={
+                <ProtectedRoute>
+                  <ElectiveSelection />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/calculator" 
+              element={
+                <ProtectedRoute>
+                  <GpaCalculator />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route 
+              path="/admin/upload" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminUpload />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Fallback route for unknown paths */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </AuthProvider>
       </BrowserRouter>
       <Sonner position="top-right" />
