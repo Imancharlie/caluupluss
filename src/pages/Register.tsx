@@ -4,29 +4,34 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const AdminLogin = () => {
+const Register = () => {
   const navigate = useNavigate();
-  const { signInWithEmail } = useAuth();
+  const { signUp } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!email || !password || !name) {
+      console.log("Form validation failed:", { email, password, name });
       return;
     }
     
     setIsLoading(true);
+    console.log("Starting registration process...");
     
     try {
-      await signInWithEmail(email, password);
-      navigate("/admin/upload");
+      console.log("Calling signUp with:", { email, name });
+      await signUp(email, password, name);
+      console.log("Registration successful, navigating to /selection");
+      navigate("/selection");
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Registration error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -41,11 +46,11 @@ const AdminLogin = () => {
         transition={{ duration: 0.3 }}
       >
         <button 
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/login")}
           className="flex items-center text-white opacity-70 hover:opacity-100 transition-opacity"
         >
           <ChevronLeft size={20} />
-          <span>Back</span>
+          <span>Back to Login</span>
         </button>
       </motion.div>
       
@@ -72,7 +77,7 @@ const AdminLogin = () => {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.4 }}
             >
-              Admin Access
+              Create Account
             </motion.h1>
             
             <motion.p 
@@ -81,7 +86,7 @@ const AdminLogin = () => {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.5 }}
             >
-              Sign in to access the administrative panel
+              Join us to start your academic journey
             </motion.p>
           </div>
           
@@ -92,6 +97,22 @@ const AdminLogin = () => {
             transition={{ duration: 0.5, delay: 0.6 }}
           >
             <form onSubmit={handleSubmit} className="p-6">
+              <div className="mb-4">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="form-input"
+                  placeholder="Enter your full name"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
               <div className="mb-4">
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Email
@@ -142,7 +163,7 @@ const AdminLogin = () => {
                     : "hover:bg-caluu-blue-light hover:shadow-lg"
                 }`}
               >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? "Creating account..." : "Create Account"}
               </button>
             </form>
           </motion.div>
@@ -153,7 +174,14 @@ const AdminLogin = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.8 }}
           >
-            <p>Contact your administrator for credentials</p>
+            <p>Already have an account?{" "}
+              <button 
+                onClick={() => navigate("/login")}
+                className="text-white hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
           </motion.div>
         </motion.div>
       </div>
@@ -161,4 +189,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default Register; 

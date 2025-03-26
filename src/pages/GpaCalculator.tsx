@@ -118,7 +118,7 @@ const GpaCalculator = () => {
     try {
       // First fetch core courses
       const coreParams = {
-        program_id: selection.programId,
+          program_id: selection.programId,
         academic_year_id: selection.academicYearId,
         semester: selection.semester.toString(),
         optional: "false" // Only fetch core courses
@@ -479,7 +479,7 @@ const GpaCalculator = () => {
                       >
                         <td className="py-2 sm:py-4 pl-2">
                           <div className="font-medium text-gray-900 text-sm sm:text-base">
-                            {course.code}
+                          {course.code}
                             {course.is_elective && <span className="ml-1 sm:ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">Elective</span>}
                           </div>
                           <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">{course.name}</div>

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const AdminLogin = () => {
+const Login = () => {
   const navigate = useNavigate();
   const { signInWithEmail } = useAuth();
   
@@ -17,14 +17,18 @@ const AdminLogin = () => {
     e.preventDefault();
     
     if (!email || !password) {
+      console.log("Form validation failed:", { email, password });
       return;
     }
     
     setIsLoading(true);
+    console.log("Starting login process...");
     
     try {
+      console.log("Calling signInWithEmail with:", { email });
       await signInWithEmail(email, password);
-      navigate("/admin/upload");
+      console.log("Login successful, navigating to /selection");
+      navigate("/selection");
     } catch (error) {
       console.error("Login error:", error);
     } finally {
@@ -72,7 +76,7 @@ const AdminLogin = () => {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.4 }}
             >
-              Admin Access
+              Welcome Back
             </motion.h1>
             
             <motion.p 
@@ -81,7 +85,7 @@ const AdminLogin = () => {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.5 }}
             >
-              Sign in to access the administrative panel
+              Sign in to continue your academic journey
             </motion.p>
           </div>
           
@@ -153,7 +157,14 @@ const AdminLogin = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.8 }}
           >
-            <p>Contact your administrator for credentials</p>
+            <p>Don't have an account?{" "}
+              <button 
+                onClick={() => navigate("/register")}
+                className="text-white hover:underline"
+              >
+                Sign up
+              </button>
+            </p>
           </motion.div>
         </motion.div>
       </div>
@@ -161,4 +172,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default Login; 
