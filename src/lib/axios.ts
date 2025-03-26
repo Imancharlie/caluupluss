@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://caluu.pythonanywhere.com/api';  // Base URL with /api prefix
+const API_BASE_URL = 'https://caluu.pythonanywhere.com/api';
 
 // Function to get CSRF token
 const getCSRFToken = () => {

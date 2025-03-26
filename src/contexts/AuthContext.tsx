@@ -16,8 +16,9 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<User>;
+  signOut: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 interface ApiError {
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("AuthContext: Starting signInWithEmail process");
-      const response = await axiosInstance.post('/login/', {
+      const response = await axiosInstance.post('/auth/login/', {
         username: email,
         password,
       });
@@ -90,35 +91,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       console.log("AuthContext: Starting signUp process");
-      const [firstName, ...lastNameParts] = name.split(' ');
-      const lastName = lastNameParts.join(' ');
-      
       console.log("AuthContext: Making registration request with:", {
-        username: email,
         email,
-        first_name: firstName,
-        last_name: lastName
+        password,
+        name
       });
 
       const response = await axiosInstance.post('/auth/register/', {
-        username: email,
         email,
         password,
-        first_name: firstName,
-        last_name: lastName,
+        name
       });
-
+      
       console.log("AuthContext: Registration response received:", response.data);
+      
+      const { id, email: userEmail, name: userName, isAdmin } = response.data;
+      
+      // Create a user object from the response data
+      const user = {
+        id,
+        username: userEmail,
+        email: userEmail,
+        first_name: userName.split(' ')[0] || '',
+        last_name: userName.split(' ').slice(1).join(' ') || '',
+        is_staff: isAdmin
+      };
 
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
-      toast.success('Successfully signed up!');
+      toast.success('Successfully registered!');
+      return user;
     } catch (error) {
       console.error("AuthContext: Registration error:", error);
       const axiosError = error as AxiosError<ApiError>;
-      const errorMessage = axiosError.response?.data?.error || 'Failed to sign up';
+      const errorMessage = axiosError.response?.data?.error || 'Failed to register';
       toast.error(errorMessage);
       throw error;
     }
@@ -140,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithEmail, signUp, signOut, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
