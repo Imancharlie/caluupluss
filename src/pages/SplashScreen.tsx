@@ -91,11 +91,6 @@ const SplashScreen = () => {
           }}
           className="mb-8 relative"
         >
-          <img 
-            src="/lovable-uploads/1d1159cc-5ad8-47f9-a69b-b6624cac259b.png" 
-            alt="CALUU Logo" 
-            className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-          />
           
           {/* Sparkle effect */}
           <motion.div
@@ -148,7 +143,7 @@ const SplashScreen = () => {
               }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
-              your academic journey simplified
+              your academic Best friend
             </motion.p>
           </div>
         </motion.div>

@@ -68,6 +68,17 @@ const ElectiveSelection = () => {
         params: electiveParams
       });
       
+      if (!response.data || response.data.length === 0) {
+        toast({
+          title: "No Electives Available",
+          description: "There are no elective courses available for your selection. You will proceed to the GPA calculator.",
+          variant: "default"
+        });
+        sessionStorage.setItem("selectedElectives", JSON.stringify([]));
+        navigate("/calculator");
+        return;
+      }
+      
       setCourses(response.data);
       
       // Load any previously selected electives
@@ -78,10 +89,12 @@ const ElectiveSelection = () => {
     } catch (error) {
       console.error("Error fetching electives:", error);
       toast({
-        title: "Error",
-        description: "Failed to load elective courses. Please try again.",
-        variant: "destructive"
+        title: "No Electives Available",
+        description: "There are no elective courses available for your selection. You will proceed to the GPA calculator.",
+        variant: "default"
       });
+      sessionStorage.setItem("selectedElectives", JSON.stringify([]));
+      navigate("/calculator");
     } finally {
       setIsLoading(false);
     }
@@ -218,8 +231,25 @@ const ElectiveSelection = () => {
               </div>
             </div>
           </motion.div>
+          {/* Add copyright section */}
+<motion.div 
+  className="mt-4 text-center text-white/60 text-sm"
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.4, delay: 0.8 }}
+>
+  <p>&copy; 2025 Kodin Softwares |{" "}
+    <button 
+      onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
+      className="text-white hover:underline"
+    >
+      Visit us
+    </button>
+  </p>
+</motion.div>
         </motion.div>
       </div>
+      
     </div>
   );
 };

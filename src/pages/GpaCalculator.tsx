@@ -534,7 +534,10 @@ const GpaCalculator = () => {
                   </motion.div>
                 )}
               </motion.div>
+              
             </motion.div>
+            
+            
           ) : (
             <div className="p-6 sm:p-12 text-center">
               <div className="text-caluu-blue-dark">
@@ -610,9 +613,27 @@ const GpaCalculator = () => {
                 Submit Feedback
               </Button>
             </div>
+            
           </motion.div>
         </div>
       )}
+      
+      {/* Add copyright section */}
+      <motion.div 
+        className="mt-4 text-center text-white/60 text-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.8 }}
+      >
+        <p>&copy; 2025 Kodin Softwares |{" "}
+          <button 
+            onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
+            className="text-white hover:underline"
+          >
+            Visit us
+          </button>
+        </p>
+      </motion.div>
     </div>
   );
 };

@@ -1,9 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { AxiosError } from 'axios';
+
+interface ApiError {
+  error?: string;
+  detail?: string;
+  non_field_errors?: string[];
+}
 
 const Register = () => {
   const navigate = useNavigate();
@@ -22,11 +29,72 @@ const Register = () => {
     }
   }, [user, navigate]);
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    if (email.length > 150) {
+      return "Email address is too long (maximum 150 characters)";
+    }
+    return null;
+  };
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) {
+      return "Password must be at least 8 characters long";
+    }
+    if (!/[A-Z]/.test(password)) {
+      return "Password must contain at least one uppercase letter";
+    }
+    if (!/[a-z]/.test(password)) {
+      return "Password must contain at least one lowercase letter";
+    }
+    if (!/[0-9]/.test(password)) {
+      return "Password must contain at least one number";
+    }
+    return null;
+  };
+
+  const validateName = (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return "Please enter your name";
+    }
+    if (!trimmedName.includes(' ')) {
+      return "Please enter your full name (first and last name)";
+    }
+    if (trimmedName.length > 150) {
+      return "Name is too long (maximum 150 characters)";
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Basic field validation
     if (!email || !password || !name) {
-      console.log("Form validation failed:", { email, password, name });
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    // Specific validation with detailed messages
+    const emailError = validateEmail(email);
+    if (emailError) {
+      toast.error(emailError);
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
+
+    const nameError = validateName(name);
+    if (nameError) {
+      toast.error(nameError);
       return;
     }
     
@@ -35,11 +103,34 @@ const Register = () => {
     
     try {
       console.log("Calling signUp with:", { email, name });
-      await signUp(email, password, name);
-      console.log("Registration successful, navigating to /selection");
+      const user = await signUp(email, password, name);
+      console.log("Registration successful, user:", user);
+      
+      // Show success message and navigate
+      toast.success("Account created successfully! Welcome to CALUU.");
       navigate("/selection");
     } catch (error) {
       console.error("Registration error:", error);
+      
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        
+        // Handle specific error cases
+        if (errorMessage.includes("already registered")) {
+          toast.error("This email is already registered. Please use a different email or sign in.");
+        } else if (errorMessage.includes("try signing in manually")) {
+          toast.error("Registration completed but automatic sign in failed. Please try signing in manually.");
+          navigate("/login");
+        } else if (errorMessage.includes("Network error")) {
+          toast.error("Network error: Please check your internet connection and try again.");
+        } else if (errorMessage.includes("Server error")) {
+          toast.error("Server error: Something went wrong on our end. Please try again later.");
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error("Registration failed. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -70,19 +161,7 @@ const Register = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="text-center mb-8">
-            <motion.div 
-              className="mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-            >
-              <img
-                src="/lovable-uploads/1d1159cc-5ad8-47f9-a69b-b6624cac259b.png"
-                alt="CALUU Logo"
-                className="w-32 h-32 object-contain mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-              />
-            </motion.div>
-            
+
             <motion.h1 
               className="text-3xl font-bold text-white mb-2"
               initial={{ opacity: 0 }}
@@ -194,7 +273,7 @@ const Register = () => {
                 onClick={() => navigate("/login")}
                 className="text-white hover:underline"
               >
-                Sign in
+                Login 
               </button>
             </p>
           </motion.div>

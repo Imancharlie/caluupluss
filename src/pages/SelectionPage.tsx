@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 import axios from "axios";
 
 const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
@@ -23,6 +25,51 @@ interface AcademicYear {
   courses_confirmed: boolean;
 }
 
+// Add Modal component
+const AddCoursesModal = ({ isOpen, onClose, programId, academicYearId, semester, years }) => {
+  if (!isOpen) return null;
+
+  // Get the year number from the selected academic year
+  const selectedYear = years.find(year => year.id === academicYearId);
+  const yearNumber = selectedYear ? selectedYear.year : '';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <motion.div 
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <h2 className="text-xl font-semibold mb-4">No Courses Available</h2>
+        <p className="text-gray-600 mb-6">
+          We don't have any courses available for this program, year, and semester. Would you like to help us add the courses?
+        </p>
+        <div className="flex justify-end space-x-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="text-gray-600"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              const yearSelect = document.getElementById('year') as HTMLSelectElement;
+              const selectedOption = yearSelect.options[yearSelect.selectedIndex].text;
+              const yearNumber = selectedOption.match(/\d+/)?.[0] || '';
+              window.open(`http://caluu.pythonanywhere.com/dashboard/add-courses/${programId}/${yearNumber}/${semester}/`, '_blank');
+            }}
+            className="bg-caluu-blue text-white hover:bg-caluu-blue-light"
+          >
+            Help Add Courses
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const SelectionPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,6 +90,11 @@ const SelectionPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProgramsLoading, setIsProgramsLoading] = useState(false);
   const [isYearsLoading, setIsYearsLoading] = useState(false);
+
+  const [showAddCoursesModal, setShowAddCoursesModal] = useState(false);
+  const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("");
 
   useEffect(() => {
     const fetchColleges = async () => {
@@ -151,6 +203,7 @@ const SelectionPage = () => {
     
     const selectedYearObj = years.find(year => year.id === selectedYearId);
     if (selectedYearObj) {
+      console.log('Selected year object:', selectedYearObj); // Debug log
       setAcademicYear(selectedYearObj.year.toString());
       setContainsElectives(selectedYearObj.contains_electives);
       setCoursesConfirmed(selectedYearObj.courses_confirmed);
@@ -186,10 +239,31 @@ const SelectionPage = () => {
       const electiveResponse = await axios.get(electiveUrl);
       const hasElectives = electiveResponse.data && electiveResponse.data.length > 0;
 
+      // Check if there are any core courses
+      const coreParams = {
+        program_id: programId,
+        academic_year_id: academicYearId,
+        semester: semester.toString(),
+        optional: "false"
+      };
+
+      const coreUrl = `${API_BASE_URL}/courses/?${new URLSearchParams(coreParams).toString()}`;
+      const coreResponse = await axios.get(coreUrl);
+      const hasCoreCourses = coreResponse.data && coreResponse.data.length > 0;
+
+      // If no courses are available, show the modal
+      if (!hasCoreCourses && !hasElectives) {
+        setSelectedProgramId(programId);
+        setSelectedAcademicYear(academicYear);
+        setSelectedSemester(semester);
+        setShowAddCoursesModal(true);
+        return;
+      }
+
       // Save selection to session storage
       const selection = {
         programId: programId,
-        programName: programName,  // Use the programName from state
+        programName: programName,
         academicYearId: academicYearId,
         academicYear: parseInt(academicYear),
         semester: parseInt(semester),
@@ -197,23 +271,20 @@ const SelectionPage = () => {
         coursesConfirmed: coursesConfirmed
       };
       
-      console.log('Saving selection:', selection);  // Debug log
+      console.log('Saving selection:', selection);
       sessionStorage.setItem("selection", JSON.stringify(selection));
       
-      // If there are electives, navigate to elective selection
-      // If no electives, navigate directly to GPA calculator
       if (hasElectives) {
         navigate("/elective-selection");
       } else {
-        // Set empty array for selected electives since there are none
         sessionStorage.setItem("selectedElectives", JSON.stringify([]));
         navigate("/calculator");
       }
     } catch (error) {
-      console.error("Error checking elective courses:", error);
+      console.error("Error checking courses:", error);
       toast({
         title: "Error",
-        description: "Failed to check elective courses. Please try again.",
+        description: "Failed to check courses. Please try again.",
         variant: "destructive"
       });
     }
@@ -399,7 +470,33 @@ const SelectionPage = () => {
         >
          
         </motion.div>
+        <motion.div 
+            className="mt-4 text-center text-white/60 text-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
+            <p>&copy; 2025 Kodin Softwares |{" "}
+              <button 
+                onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
+                className="text-white hover:underline"
+              >
+                Visit us
+              </button>
+            </p>
+          </motion.div>
+
       </motion.div>
+
+      {/* Add the modal */}
+      <AddCoursesModal
+        isOpen={showAddCoursesModal}
+        onClose={() => setShowAddCoursesModal(false)}
+        programId={programId}
+        academicYearId={academicYearId}
+        semester={semester}
+        years={years}
+      />
     </div>
   );
 };

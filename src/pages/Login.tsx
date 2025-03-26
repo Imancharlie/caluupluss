@@ -71,18 +71,6 @@ const Login = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="text-center mb-8">
-            <motion.div 
-              className="mb-6"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-            >
-              <img
-                src="/lovable-uploads/1d1159cc-5ad8-47f9-a69b-b6624cac259b.png"
-                alt="CALUU Logo"
-                className="w-32 h-32 object-contain mx-auto drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
-              />
-            </motion.div>
             
             <motion.h1 
               className="text-3xl font-bold text-white mb-2"

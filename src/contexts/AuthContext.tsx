@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '@/lib/axios';
 import { toast } from 'sonner';
@@ -52,16 +51,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // First try to use the saved user data
-      if (savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-          console.log("AuthContext: Restored user from localStorage", parsedUser);
-        } catch (e) {
-          console.error("Error parsing saved user data:", e);
-          localStorage.removeItem('user');
+      // Validate token with backend
+      try {
+        const response = await axiosInstance.get('/auth/check/');
+        if (response.data && response.data.user) {
+          setUser(response.data.user);
+          console.log("AuthContext: Token validated, user restored", response.data.user);
+        } else {
+          throw new Error('Invalid user data');
         }
+      } catch (error) {
+        console.error("AuthContext: Token validation failed:", error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
       }
       
       setLoading(false);
@@ -84,16 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("AuthContext: Login response received:", response.data);
       
-      const { token, user } = response.data;
+      const { token, user_id, username, is_staff } = response.data;
       
       // Create a user object from the response data
       const userData = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        is_staff: user.is_staff
+        id: user_id,
+        username: username,
+        email: username, // Django uses email as username
+        first_name: '', // These will be populated from the user profile endpoint
+        last_name: '',
+        is_staff: is_staff
       };
 
       localStorage.setItem('token', token);
@@ -132,35 +135,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("AuthContext: Registration response received:", response.data);
       
-      const { id, email: userEmail, name: userName, isAdmin } = response.data;
-      
-      // Create a user object from the response data
-      const user = {
-        id,
-        username: userEmail,
-        email: userEmail,
-        first_name: userName.split(' ')[0] || '',
-        last_name: userName.split(' ').slice(1).join(' ') || '',
-        is_staff: isAdmin
-      };
+      // Even if we get a 500 error but the user was created, we can proceed with sign in
+      try {
+        // Try to sign in immediately after registration
+        console.log("AuthContext: Attempting to sign in after registration");
+        await signInWithEmail(email, password);
+        console.log("AuthContext: Successfully signed in after registration");
+        
+        // Create a user object from the registration data
+        const user = {
+          id: response.data?.id || 0,
+          username: email,
+          email: email,
+          first_name: name.split(' ')[0] || '',
+          last_name: name.split(' ').slice(1).join(' ') || '',
+          is_staff: false
+        };
 
-      // For registration, we need to sign in separately as our backend doesn't return a token
-      await signInWithEmail(email, password);
-      
-      toast.success('Successfully registered!');
-      return user;
+        return user;
+      } catch (signInError) {
+        console.error("AuthContext: Error during post-registration sign in:", signInError);
+        // If sign in fails, throw a more specific error
+        throw new Error("Registration successful but automatic sign in failed. Please try signing in manually.");
+      }
     } catch (error) {
       console.error("AuthContext: Registration error:", error);
       const axiosError = error as AxiosError<ApiError>;
       
       if (axiosError.code === 'ERR_NETWORK') {
-        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
-      } else {
-        const errorMessage = axiosError.response?.data?.error || 'Failed to register';
-        toast.error(errorMessage);
+        throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
+      }
+
+      // Handle 500 Internal Server Error
+      if (axiosError.response?.status === 500) {
+        // Check if the error response contains any specific information
+        const errorMessage = axiosError.response.data?.error || 'Server error occurred';
+        console.log("AuthContext: 500 error details:", errorMessage);
+        
+        // If we get a 500 but the user might have been created, try to sign in
+        try {
+          console.log("AuthContext: Attempting to sign in despite 500 error");
+          await signInWithEmail(email, password);
+          console.log("AuthContext: Successfully signed in despite 500 error");
+          
+          // Create a user object
+          const user = {
+            id: 0, // We don't have the ID from the 500 response
+            username: email,
+            email: email,
+            first_name: name.split(' ')[0] || '',
+            last_name: name.split(' ').slice(1).join(' ') || '',
+            is_staff: false
+          };
+
+          return user;
+        } catch (signInError) {
+          console.error("AuthContext: Error during recovery sign in:", signInError);
+          throw new Error("Registration might have succeeded. Please try signing in manually.");
+        }
+      }
+
+      // Handle specific backend error messages
+      if (axiosError.response?.data?.error) {
+        const errorMessage = axiosError.response.data.error;
+        
+        // Map specific error messages
+        if (errorMessage.includes("already exists")) {
+          throw new Error("This email is already registered. Please use a different email or sign in.");
+        } else if (errorMessage.includes("invalid")) {
+          throw new Error("Invalid registration data. Please check your information and try again.");
+        } else if (errorMessage.includes("password")) {
+          throw new Error("Invalid password format. Please ensure it meets the requirements.");
+        } else if (errorMessage.includes("email")) {
+          throw new Error("Invalid email format. Please enter a valid email address.");
+        } else if (errorMessage.includes("IntegrityError")) {
+          throw new Error("This email is already registered. Please use a different email or sign in.");
+        } else {
+          throw new Error(errorMessage);
+        }
       }
       
-      throw error;
+      throw new Error('Failed to register. Please try again later.');
     }
   };
 
