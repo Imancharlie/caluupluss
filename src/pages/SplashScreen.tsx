@@ -9,30 +9,38 @@ const SplashScreen = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [startAnimation, setStartAnimation] = useState(false);
+  const [animationCompleted, setAnimationCompleted] = useState(false);
 
   useEffect(() => {
-    // Don't proceed with navigation until auth check is complete
-    if (loading) return;
-
     // Trigger animation after a short delay
     const animationTimeout = setTimeout(() => {
       setStartAnimation(true);
-    }, 500);
+    }, 300);
 
-    // Navigate to appropriate page after splash screen
-    const navigationTimeout = setTimeout(() => {
+    // Set animation completed after animation time
+    const completionTimeout = setTimeout(() => {
+      setAnimationCompleted(true);
+    }, 3000);
+
+    return () => {
+      clearTimeout(animationTimeout);
+      clearTimeout(completionTimeout);
+    };
+  }, []);
+
+  // Handle navigation after animation and auth check
+  useEffect(() => {
+    // Only navigate when both animation is completed and auth check is not loading
+    if (animationCompleted && !loading) {
+      console.log('SplashScreen: Animation completed, auth status:', user ? 'authenticated' : 'unauthenticated');
+      
       if (user) {
         navigate("/selection");
       } else {
         navigate("/login");
       }
-    }, 4000);
-
-    return () => {
-      clearTimeout(animationTimeout);
-      clearTimeout(navigationTimeout);
-    };
-  }, [navigate, user, loading]);
+    }
+  }, [navigate, user, loading, animationCompleted]);
 
   // Floating particles animation
   const particles = Array.from({ length: 12 }).map((_, i) => (
@@ -161,6 +169,9 @@ const SplashScreen = () => {
                 duration: 2.5, 
                 delay: 0.8, 
                 ease: "easeInOut" 
+              }}
+              onAnimationComplete={() => {
+                console.log("Loading animation completed");
               }}
             />
           </div>

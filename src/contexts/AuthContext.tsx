@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '@/lib/axios';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
 interface User {
@@ -44,48 +45,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("AuthContext: Checking auth with token:", token ? "exists" : "none");
       
-      if (token) {
-        // First try to use the saved user data
-        if (savedUser) {
-          try {
-            const parsedUser = JSON.parse(savedUser);
-            setUser(parsedUser);
-            console.log("AuthContext: Restored user from localStorage", parsedUser);
-          } catch (e) {
-            console.error("Error parsing saved user data:", e);
-            localStorage.removeItem('user');
-          }
-        }
-        
-        // Then verify with the server
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
+      // First try to use the saved user data
+      if (savedUser) {
         try {
-          const response = await axiosInstance.get('/auth/check/');
-          console.log("AuthContext: Server auth check response:", response.data);
-          
-          // Update user data from server
-          const serverUser = {
-            id: response.data.id,
-            username: response.data.email,
-            email: response.data.email,
-            first_name: response.data.name.split(' ')[0] || '',
-            last_name: response.data.name.split(' ').slice(1).join(' ') || '',
-            is_staff: response.data.isAdmin
-          };
-          
-          setUser(serverUser);
-          localStorage.setItem('user', JSON.stringify(serverUser));
-          console.log("AuthContext: Updated user from server", serverUser);
-        } catch (error) {
-          console.error("Server auth check failed:", error);
-          // Keep using the existing user data from localStorage
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          console.log("AuthContext: Restored user from localStorage", parsedUser);
+        } catch (e) {
+          console.error("Error parsing saved user data:", e);
+          localStorage.removeItem('user');
         }
       }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
-    } finally {
       setLoading(false);
     }
   };

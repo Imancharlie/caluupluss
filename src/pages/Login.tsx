@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const Login = () => {
     e.preventDefault();
     
     if (!email || !password) {
-      console.log("Form validation failed:", { email, password });
+      toast.error("Please fill in all fields");
       return;
     }
     
@@ -39,6 +40,7 @@ const Login = () => {
       navigate("/selection");
     } catch (error) {
       console.error("Login error:", error);
+      // Toast is already shown in AuthContext
     } finally {
       setIsLoading(false);
     }
