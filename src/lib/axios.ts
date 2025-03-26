@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 
 const API_BASE_URL = 'https://caluu.pythonanywhere.com/api';
@@ -44,9 +45,15 @@ axiosInstance.interceptors.response.use(
     if (error.response) {
       // Handle 401 Unauthorized errors
       if (error.response.status === 401) {
+        console.log('Unauthorized request detected, clearing auth data');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        
+        // Only redirect if we're not already on the login page
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login' && currentPath !== '/register' && currentPath !== '/') {
+          window.location.href = '/login';
+        }
       }
       
       // Handle 403 Forbidden errors
@@ -58,4 +65,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance; 
+export default axiosInstance;

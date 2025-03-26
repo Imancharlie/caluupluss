@@ -40,14 +40,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      console.log("AuthContext: Checking auth with token:", token ? "exists" : "none");
+      
       if (token) {
-        const response = await axiosInstance.get('/auth/check/');
-        setUser(response.data.user);
+        // First try to use the saved user data
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            setUser(parsedUser);
+            console.log("AuthContext: Restored user from localStorage", parsedUser);
+          } catch (e) {
+            console.error("Error parsing saved user data:", e);
+            localStorage.removeItem('user');
+          }
+        }
+        
+        // Then verify with the server
+        try {
+          const response = await axiosInstance.get('/auth/check/');
+          console.log("AuthContext: Server auth check response:", response.data);
+          
+          // Update user data from server
+          const serverUser = {
+            id: response.data.id,
+            username: response.data.email,
+            email: response.data.email,
+            first_name: response.data.name.split(' ')[0] || '',
+            last_name: response.data.name.split(' ').slice(1).join(' ') || '',
+            is_staff: response.data.isAdmin
+          };
+          
+          setUser(serverUser);
+          localStorage.setItem('user', JSON.stringify(serverUser));
+          console.log("AuthContext: Updated user from server", serverUser);
+        } catch (error) {
+          console.error("Server auth check failed:", error);
+          // Keep using the existing user data from localStorage
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -63,21 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("AuthContext: Login response received:", response.data);
       
-      const { token, user_id, username, is_staff } = response.data;
+      const { token, user } = response.data;
       
       // Create a user object from the response data
-      const user = {
-        id: user_id,
-        username: username,
-        email: username, // Since we're using email as username
-        first_name: '', // These will be populated when we fetch user details
-        last_name: '',
-        is_staff: is_staff
+      const userData = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        is_staff: user.is_staff
       };
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
       toast.success('Successfully signed in!');
     } catch (error) {
       console.error("AuthContext: Login error:", error);
@@ -117,8 +154,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_staff: isAdmin
       };
 
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
+      // For registration, we need to sign in separately as our backend doesn't return a token
+      await signInWithEmail(email, password);
+      
       toast.success('Successfully registered!');
       return user;
     } catch (error) {
@@ -132,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await axiosInstance.post('/logout/');
+      await axiosInstance.post('/auth/logout/');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
@@ -141,7 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const axiosError = error as AxiosError<ApiError>;
       const errorMessage = axiosError.response?.data?.error || 'Failed to sign out';
       toast.error(errorMessage);
-      throw error;
+      
+      // Even if the server request fails, clear the local storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
     }
   };
 
@@ -158,4 +200,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}

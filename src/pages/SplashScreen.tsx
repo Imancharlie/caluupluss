@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -6,10 +7,13 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [startAnimation, setStartAnimation] = useState(false);
 
   useEffect(() => {
+    // Don't proceed with navigation until auth check is complete
+    if (loading) return;
+
     // Trigger animation after a short delay
     const animationTimeout = setTimeout(() => {
       setStartAnimation(true);
@@ -28,7 +32,7 @@ const SplashScreen = () => {
       clearTimeout(animationTimeout);
       clearTimeout(navigationTimeout);
     };
-  }, [navigate, user]);
+  }, [navigate, user, loading]);
 
   // Floating particles animation
   const particles = Array.from({ length: 12 }).map((_, i) => (
@@ -79,18 +83,11 @@ const SplashScreen = () => {
           }}
           className="mb-8 relative"
         >
-          <div className="w-28 h-28 bg-gradient-to-br from-white to-white/90 rounded-2xl flex items-center justify-center shadow-[0_8px_32px_rgba(0,0,0,0.2)] rotate-3">
-            <span className="text-caluu-blue-dark text-6xl font-bold relative z-10">C</span>
-            <motion.div 
-              className="absolute inset-0 rounded-2xl bg-white/20"
-              animate={{ 
-                boxShadow: startAnimation 
-                  ? ['0 0 0 0 rgba(255,255,255,0)', '0 0 0 15px rgba(255,255,255,0)'] 
-                  : '0 0 0 0 rgba(255,255,255,0)'
-              }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 0.5 }}
-            />
-          </div>
+          <img 
+            src="/lovable-uploads/1d1159cc-5ad8-47f9-a69b-b6624cac259b.png" 
+            alt="CALUU Logo" 
+            className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+          />
           
           {/* Sparkle effect */}
           <motion.div
