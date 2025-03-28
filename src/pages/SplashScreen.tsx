@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -91,6 +90,7 @@ const SplashScreen = () => {
           }}
           className="mb-8 relative"
         >
+  
           
           {/* Sparkle effect */}
           <motion.div

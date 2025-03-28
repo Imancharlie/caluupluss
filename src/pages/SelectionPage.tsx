@@ -479,9 +479,15 @@ const SelectionPage = () => {
             <p>&copy; 2025 Kodin Softwares |{" "}
               <button 
                 onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
-                className="text-white hover:underline"
+                className="text-white hover:underline mr-2"
               >
                 Visit us
+              </button>
+              <button 
+                onClick={() => window.open('/blog', '_blank')}
+                className="text-white hover:underline"
+              >
+                Blog
               </button>
             </p>
           </motion.div>
