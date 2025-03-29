@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate-icons && vite build",
+    "build": "vite build",
     "build:dev": "vite build --mode development",
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "build:with-icons": "npm run generate-icons && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
     "android": "npm run build && npx cap sync && npx cap open android",
     "android:build": "npm run build && npx cap sync && cd android && .\\gradlew.bat assembleRelease",
-    "generate-icons": "node scripts/generate-icons.mjs",
     "test:pwa": "node scripts/test-pwa.js"
   },
   "dependencies": {
