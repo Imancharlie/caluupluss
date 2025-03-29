@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { 
   Calendar, 
@@ -77,6 +77,15 @@ const blogPosts: BlogPost[] = [
 const Blog = () => {
   const [sortBy, setSortBy] = useState<"trending" | "latest" | "popular">("trending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate content loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const sortedPosts = [...blogPosts]
     .filter(post => 
@@ -101,14 +110,16 @@ const Blog = () => {
     <>
       <SEO 
         title="Blog - GPA Calculator"
-        description="Read informative articles about GPA calculation, academic success, and university grading systems."
-        type="blog"
+        description="Explore articles about GPA calculation, academic success, and study tips."
+        type="website"
+        url="https://caluu.kodin.co.tz/blog"
       />
       
       <div className="min-h-screen bg-gradient-to-b from-caluu-blue-dark to-caluu-blue-light">
         {/* Hero Section */}
-        <div className="relative h-[50vh] min-h-[400px] flex items-center justify-center overflow-hidden">
+        <div className="relative h-[40vh] sm:h-[50vh] min-h-[300px] sm:min-h-[400px] flex items-center justify-center overflow-hidden">
           <AnimatedBackground />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent" />
           
           <motion.div 
             className="relative text-center px-4 z-10 max-w-4xl mx-auto"
@@ -116,14 +127,11 @@ const Blog = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Academic Insights
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
+              Blog
             </h1>
-            <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Discover helpful articles about GPA calculation, academic success, scholarships, online courses, and university life.
-              <span className="block mt-4 text-white/90 font-medium text-xl md:text-2xl">
-                Let's discover our life's purpose together.
-              </span>
+            <p className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto">
+              Discover helpful articles about GPA calculation, academic success, and study strategies.
             </p>
           </motion.div>
         </div>
@@ -168,27 +176,56 @@ const Blog = () => {
           </motion.div>
 
           {/* Blog Posts Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10 animate-pulse"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <div className="h-48 bg-white/5" />
+                    <div className="p-6 space-y-4">
+                      <div className="h-4 bg-white/5 rounded w-3/4" />
+                      <div className="h-4 bg-white/5 rounded w-full" />
+                      <div className="h-4 bg-white/5 rounded w-2/3" />
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
             {sortedPosts.map((post, index) => (
               <motion.article
                 key={post.id}
+                    className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group bg-white/10 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
+                    layout
               >
-                <div className="relative h-56 overflow-hidden">
+                    <div className="relative h-48 overflow-hidden">
                   <img
                     src={post.image}
                     alt={post.title}
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute top-4 left-4">
-                    <span className="bg-caluu-blue text-white px-3 py-1 rounded-full text-sm">
-                      {post.category}
-                    </span>
-                  </div>
                 </div>
                 
                 <div className="p-6">
@@ -207,21 +244,9 @@ const Blog = () => {
                     {post.title}
                   </h2>
 
-                  <p className="text-white/60 mb-4 line-clamp-3">
+                      <p className="text-white/60 line-clamp-2 mb-4">
                     {post.excerpt}
                   </p>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {post.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="flex items-center text-sm text-white/40 bg-white/5 px-2 py-1 rounded-full"
-                      >
-                        <Tag className="w-3 h-3 mr-1" />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-sm text-white/60">
@@ -245,9 +270,11 @@ const Blog = () => {
                 </div>
               </motion.article>
             ))}
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {sortedPosts.length === 0 && (
+          {!isLoading && sortedPosts.length === 0 && (
             <motion.div 
               className="text-center py-12"
               initial={{ opacity: 0 }}

@@ -1,8 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axiosInstance from '@/lib/axios';
+import axios from 'axios';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
-import { useNavigate } from 'react-router-dom';
+
+// Create axios instance with base URL and CORS settings
+const api = axios.create({
+  baseURL: 'https://caluu.pythonanywhere.com',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  withCredentials: true // This is important for CORS
+});
 
 interface User {
   id: number;
@@ -43,8 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
       
-      console.log("AuthContext: Checking auth with token:", token ? "exists" : "none");
-      
       if (!token) {
         setUser(null);
         setLoading(false);
@@ -53,39 +60,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Validate token with backend
       try {
-        const response = await axiosInstance.get('/auth/check/');
+        const response = await api.get('/api/auth/check/', {
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
+        
         if (response.data && response.data.user) {
           setUser(response.data.user);
-          console.log("AuthContext: Token validated, user restored", response.data.user);
-        } else {
-          throw new Error('Invalid user data');
         }
       } catch (error) {
-        console.error("AuthContext: Token validation failed:", error);
+        console.error("Token validation failed:", error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
       }
-      
-      setLoading(false);
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
+    } finally {
       setLoading(false);
     }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      console.log("AuthContext: Starting signInWithEmail process");
-      const response = await axiosInstance.post('/auth/login/', {
+      const response = await api.post('/api/auth/login/', {
         username: email,
         password,
       });
-      
-      console.log("AuthContext: Login response received:", response.data);
       
       const { token, user_id, username, is_staff } = response.data;
       
@@ -104,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData);
       toast.success('Successfully signed in!');
     } catch (error) {
-      console.error("AuthContext: Login error:", error);
+      console.error("Login error:", error);
       const axiosError = error as AxiosError<ApiError>;
       
       if (axiosError.code === 'ERR_NETWORK') {
@@ -120,27 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      console.log("AuthContext: Starting signUp process");
-      console.log("AuthContext: Making registration request with:", {
-        email,
-        password,
-        name
-      });
-
-      const response = await axiosInstance.post('/auth/register/', {
+      const response = await api.post('/api/auth/register/', {
         email,
         password,
         name
       });
       
-      console.log("AuthContext: Registration response received:", response.data);
-      
-      // Even if we get a 500 error but the user was created, we can proceed with sign in
+      // Try to sign in immediately after registration
       try {
-        // Try to sign in immediately after registration
-        console.log("AuthContext: Attempting to sign in after registration");
         await signInWithEmail(email, password);
-        console.log("AuthContext: Successfully signed in after registration");
         
         // Create a user object from the registration data
         const user = {
@@ -154,45 +147,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return user;
       } catch (signInError) {
-        console.error("AuthContext: Error during post-registration sign in:", signInError);
-        // If sign in fails, throw a more specific error
+        console.error("Error during post-registration sign in:", signInError);
         throw new Error("Registration successful but automatic sign in failed. Please try signing in manually.");
       }
     } catch (error) {
-      console.error("AuthContext: Registration error:", error);
+      console.error("Registration error:", error);
       const axiosError = error as AxiosError<ApiError>;
       
       if (axiosError.code === 'ERR_NETWORK') {
         throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
-      }
-
-      // Handle 500 Internal Server Error
-      if (axiosError.response?.status === 500) {
-        // Check if the error response contains any specific information
-        const errorMessage = axiosError.response.data?.error || 'Server error occurred';
-        console.log("AuthContext: 500 error details:", errorMessage);
-        
-        // If we get a 500 but the user might have been created, try to sign in
-        try {
-          console.log("AuthContext: Attempting to sign in despite 500 error");
-          await signInWithEmail(email, password);
-          console.log("AuthContext: Successfully signed in despite 500 error");
-          
-          // Create a user object
-          const user = {
-            id: 0, // We don't have the ID from the 500 response
-            username: email,
-            email: email,
-            first_name: name.split(' ')[0] || '',
-            last_name: name.split(' ').slice(1).join(' ') || '',
-            is_staff: false
-          };
-
-          return user;
-        } catch (signInError) {
-          console.error("AuthContext: Error during recovery sign in:", signInError);
-          throw new Error("Registration might have succeeded. Please try signing in manually.");
-        }
       }
 
       // Handle specific backend error messages
@@ -221,7 +184,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await axiosInstance.post('/auth/logout/');
+      const token = localStorage.getItem('token');
+      if (token) {
+        await api.post('/api/auth/logout/', {}, {
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);

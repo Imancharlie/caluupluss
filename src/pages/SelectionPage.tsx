@@ -420,7 +420,7 @@ const SelectionPage = () => {
                   {years.map((year) => (
                     <option key={year.id} value={year.id}>
                       Year {year.year}
-                      {!year.courses_confirmed && " (Unconfirmed)"}
+                      {!year.courses_confirmed && " "}
                     </option>
                   ))}
                 </select>

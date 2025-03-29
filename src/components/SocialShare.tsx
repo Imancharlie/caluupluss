@@ -1,4 +1,4 @@
-import { Share2, Facebook, Twitter, Linkedin, Instagram, Mail, Phone } from "lucide-react";
+import { Share2, Linkedin, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface SocialShareProps {
@@ -15,14 +15,21 @@ const SocialShare = ({ title, description, image, url }: SocialShareProps) => {
 
   const shareLinks = {
     whatsapp: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-    twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
     linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}&summary=${encodedDescription}`,
     email: `mailto:gpacaluu@gmail.com?subject=${encodedTitle}&body=${encodedDescription}%20${encodedUrl}`,
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      // You might want to add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2">
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
@@ -36,34 +43,10 @@ const SocialShare = ({ title, description, image, url }: SocialShareProps) => {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className="p-2 text-white/80 hover:text-white transition-colors bg-blue-500/20 hover:bg-blue-500/30 rounded-full"
-        onClick={() => window.open(shareLinks.facebook, '_blank')}
-      >
-        <Facebook className="w-5 h-5" />
-      </motion.button>
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        className="p-2 text-white/80 hover:text-white transition-colors bg-blue-400/20 hover:bg-blue-400/30 rounded-full"
-        onClick={() => window.open(shareLinks.twitter, '_blank')}
-      >
-        <Twitter className="w-5 h-5" />
-      </motion.button>
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
         className="p-2 text-white/80 hover:text-white transition-colors bg-blue-600/20 hover:bg-blue-600/30 rounded-full"
         onClick={() => window.open(shareLinks.linkedin, '_blank')}
       >
         <Linkedin className="w-5 h-5" />
-      </motion.button>
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        className="p-2 text-white/80 hover:text-white transition-colors bg-pink-500/20 hover:bg-pink-500/30 rounded-full"
-        onClick={() => window.open('https://www.instagram.com/its_imancharlie', '_blank')}
-      >
-        <Instagram className="w-5 h-5" />
       </motion.button>
       <motion.button
         whileHover={{ scale: 1.1 }}
@@ -76,10 +59,10 @@ const SocialShare = ({ title, description, image, url }: SocialShareProps) => {
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className="p-2 text-white/80 hover:text-white transition-colors bg-green-500/20 hover:bg-green-500/30 rounded-full"
-        onClick={() => window.open('https://wa.me/256614021404', '_blank')}
+        className="p-2 text-white/80 hover:text-white transition-colors bg-gray-500/20 hover:bg-gray-500/30 rounded-full"
+        onClick={copyToClipboard}
       >
-        <Phone className="w-5 h-5" />
+        <Share2 className="w-5 h-5" />
       </motion.button>
     </div>
   );

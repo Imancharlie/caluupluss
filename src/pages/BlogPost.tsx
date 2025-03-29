@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { 
   Calendar, 
   Clock, 
@@ -18,50 +19,233 @@ import SEO from "@/components/SEO";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import SocialShare from "@/components/SocialShare";
 import Footer from "@/components/Footer";
+import BlogComments from "@/components/BlogComments";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "react-hot-toast";
+import { User } from "@/types/auth";
+import { db } from "@/lib/firebase";
+import { ref, onValue, set, update, push, DatabaseReference } from 'firebase/database';
 
 // Sample blog post data (in a real app, this would come from an API)
 const blogPost = {
   id: "1",
-  title: "How to Calculate Your GPA: A Complete Guide",
+  title: "How to Calculate Your GPA: A Complete Guide for UDSM Students",
   content: `
-    <p>Calculating your GPA (Grade Point Average) is an essential skill for any student. Whether you're in high school or university, understanding how to calculate your GPA can help you track your academic progress and set goals for improvement.</p>
+    <div class="space-y-8">
+      <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+        <h2 class="text-2xl font-bold text-white mb-4">Quick Summary</h2>
+        <ul class="list-disc list-inside space-y-2 text-white/80">
+          <li>Learn how to calculate your GPA at UDSM</li>
+          <li>Understand the UDSM grading system</li>
+          <li>Follow a step-by-step calculation example</li>
+          <li>Get tips for maintaining a high GPA</li>
+        </ul>
+      </div>
 
-    <h2>Understanding the Basics</h2>
-    <p>Your GPA is a numerical representation of your academic performance. It's calculated by:</p>
-    <ol>
-      <li>Converting letter grades to grade points</li>
-      <li>Multiplying each course's grade points by its credit hours</li>
-      <li>Adding up all the grade points</li>
-      <li>Dividing by the total number of credit hours</li>
-    </ol>
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-4">Understanding the Basics</h2>
+        <p class="text-white/80 mb-4">Your GPA (Grade Point Average) is a numerical representation of your academic performance. It's calculated by:</p>
+        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">1</div>
+            <div>
+              <h3 class="text-lg font-semibold text-white mb-2">Convert Letter Grades</h3>
+              <p class="text-white/80">Transform your letter grades into grade points using UDSM's grading scale.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">2</div>
+            <div>
+              <h3 class="text-lg font-semibold text-white mb-2">Multiply by Credit Hours</h3>
+              <p class="text-white/80">Multiply each course's grade points by its credit hours to get quality points.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">3</div>
+            <div>
+              <h3 class="text-lg font-semibold text-white mb-2">Calculate Total</h3>
+              <p class="text-white/80">Add up all quality points and divide by total credit hours for your GPA.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <h2>Common Grading Systems</h2>
-    <p>Different institutions use different grading scales. Here are some common ones:</p>
-    <ul>
-      <li>A = 4.0</li>
-      <li>B = 3.0</li>
-      <li>C = 2.0</li>
-      <li>D = 1.0</li>
-      <li>F = 0.0</li>
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-4">UDSM Grading System</h2>
+        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-4">Letter Grades</h3>
+              <ul class="space-y-2 text-white/80">
+                <li class="flex justify-between"><span>A</span><span>5.0</span></li>
+                <li class="flex justify-between"><span>B+</span><span>4.0</span></li>
+                <li class="flex justify-between"><span>B</span><span>3.0</span></li>
+                <li class="flex justify-between"><span>C</span><span>2.0</span></li>
+                <li class="flex justify-between"><span>D</span><span>1.0</span></li>
+                <li class="flex justify-between"><span>F</span><span>0.0</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-4">Example: GPA Calculation for BSc. Electrical Engineering</h2>
+        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 overflow-x-auto">
+          <table class="w-full text-white/80">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="text-left py-3 px-4">Course Code</th>
+                <th class="text-left py-3 px-4">Course Name</th>
+                <th class="text-center py-3 px-4">Credit Hours</th>
+                <th class="text-center py-3 px-4">Grade</th>
+                <th class="text-center py-3 px-4">Grade Points</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/10">
+              <tr>
+                <td class="py-3 px-4">EE221</td>
+                <td class="py-3 px-4">High Voltage</td>
+                <td class="text-center py-3 px-4">12.0</td>
+                <td class="text-center py-3 px-4">B</td>
+                <td class="text-center py-3 px-4">3.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">EE241</td>
+                <td class="py-3 px-4">Measurements</td>
+                <td class="text-center py-3 px-4">12.0</td>
+                <td class="text-center py-3 px-4">B+</td>
+                <td class="text-center py-3 px-4">4.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">MT261</td>
+                <td class="py-3 px-4">Matrices for Non-majors</td>
+                <td class="text-center py-3 px-4">12.0</td>
+                <td class="text-center py-3 px-4">A</td>
+                <td class="text-center py-3 px-4">5.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">EE231</td>
+                <td class="py-3 px-4">Electronics</td>
+                <td class="text-center py-3 px-4">8.0</td>
+                <td class="text-center py-3 px-4">A</td>
+                <td class="text-center py-3 px-4">5.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">EE253</td>
+                <td class="py-3 px-4">Electromagnetism</td>
+                <td class="text-center py-3 px-4">8.0</td>
+                <td class="text-center py-3 px-4">B+</td>
+                <td class="text-center py-3 px-4">4.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">ME213</td>
+                <td class="py-3 px-4">Material Science</td>
+                <td class="text-center py-3 px-4">8.0</td>
+                <td class="text-center py-3 px-4">A</td>
+                <td class="text-center py-3 px-4">5.0</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4">EE251</td>
+                <td class="py-3 px-4">Network Analysis</td>
+                <td class="text-center py-3 px-4">8.0</td>
+                <td class="text-center py-3 px-4">B</td>
+                <td class="text-center py-3 px-4">3.0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 space-y-4">
+          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 class="text-xl font-semibold text-white mb-4">Step 1: Calculate Weighted Grade Points</h3>
+            <ul class="space-y-2 text-white/80">
+              <li>EE221: 12.0 × 3.0 = 36.0</li>
+              <li>EE241: 12.0 × 4.0 = 48.0</li>
+              <li>MT261: 12.0 × 5.0 = 60.0</li>
+              <li>EE231: 8.0 × 5.0 = 40.0</li>
+              <li>EE253: 8.0 × 4.0 = 32.0</li>
+              <li>ME213: 8.0 × 5.0 = 40.0</li>
+              <li>EE251: 8.0 × 3.0 = 24.0</li>
     </ul>
+          </div>
 
-    <h2>Tips for Success</h2>
-    <p>Maintaining a high GPA requires dedication and effective study strategies. Here are some tips:</p>
-    <ul>
-      <li>Attend all classes regularly</li>
-      <li>Take detailed notes</li>
-      <li>Review material regularly</li>
-      <li>Seek help when needed</li>
-      <li>Stay organized</li>
+          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 class="text-xl font-semibold text-white mb-4">Step 2: Calculate Total</h3>
+            <p class="text-white/80 mb-2">Total Weighted Grade Points = 36.0 + 48.0 + 60.0 + 40.0 + 32.0 + 24.0 + 40.0 = <span class="text-caluu-blue font-bold">280.0</span></p>
+            <p class="text-white/80 mb-2">Total Credit Hours = 12.0 + 12.0 + 12.0 + 8.0 + 8.0 + 8.0 + 8.0 = <span class="text-caluu-blue font-bold">68.0</span></p>
+            <p class="text-white/80">Final GPA = 280.0 ÷ 68.0 = <span class="text-caluu-blue font-bold">4.1 </span>  upper second</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-4">Tips for Success at UDSM</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 class="text-xl font-semibold text-white mb-4">Study Strategies</h3>
+            <ul class="space-y-3 text-white/80">
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Attend all lectures and practical sessions</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Take detailed notes during classes</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Review material regularly</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Practice with past papers</span>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 class="text-xl font-semibold text-white mb-4">Time Management</h3>
+            <ul class="space-y-3 text-white/80">
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Start assignments early</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Break down large tasks</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Use a planner or digital calendar</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-caluu-blue">•</span>
+                <span>Set realistic goals</span>
+              </li>
     </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+        <h2 class="text-2xl font-bold text-white mb-4">Need Help Calculating Your GPA?</h2>
+        <p class="text-white/80 mb-4">Use our GPA Calculator to easily calculate your GPA and track your academic progress at UDSM.</p>
+        <a href="/calculator" class="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-6 py-3 rounded-full font-semibold transition-colors">
+          Try GPA Calculator
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+    </div>
   `,
-  author: "John Doe",
+  author: "Iman charlie",
   date: "2024-03-15",
   readTime: "5 min read",
   category: "GPA Calculation",
   tags: ["GPA", "Grades", "Academic Success", "Study Tips"],
-  likes: 245,
-  comments: 32,
+  likes: 45,
+  comments: 3,
   image: "/blog/gpa-guide.jpg",
   relatedPosts: [
     {
@@ -83,9 +267,125 @@ const blogPost = {
   ]
 };
 
+interface CommentData {
+  content: string;
+  author: string;
+  authorName: string;
+  createdAt: string;
+}
+
+interface Comment extends CommentData {
+  id: string;
+}
+
 const BlogPost = () => {
   const { slug } = useParams();
   const currentUrl = window.location.href;
+  const { user } = useAuth();
+  const [likes, setLikes] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [showComments, setShowComments] = useState(false);
+
+  // Load comments and likes on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load comments
+        const commentsRef = ref(db, `posts/${blogPost.id}/comments`);
+        onValue(commentsRef, (snapshot) => {
+          const commentsData = snapshot.val();
+          if (commentsData) {
+            const loadedComments = Object.entries(commentsData).map(([id, data]: [string, CommentData]) => ({
+              id,
+              ...data as CommentData
+            }));
+            setComments(loadedComments);
+          } else {
+            setComments([]);
+          }
+        });
+
+        // Load likes and check if user has liked
+        const postRef = ref(db, `posts/${blogPost.id}`);
+        onValue(postRef, (snapshot) => {
+          const postData = snapshot.val();
+          if (postData) {
+            setLikes(postData.likes || 0);
+            // Check if user has liked this post
+            const userId = user?.uid || 'anonymous';
+            if (postData.likedBy && postData.likedBy[userId]) {
+              setIsLiked(true);
+            }
+          } else {
+            // Initialize post if it doesn't exist
+            set(postRef, {
+              title: blogPost.title,
+              likes: 0,
+              likedBy: {},
+              createdAt: new Date().toISOString()
+            });
+          }
+        });
+
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toast.error("Error loading data");
+      }
+    };
+    loadData();
+  }, [blogPost.id, user?.uid]);
+
+  // Handle like functionality
+  const handleLike = async () => {
+    try {
+      const postRef = ref(db, `posts/${blogPost.id}`);
+      const userId = user?.uid || 'anonymous';
+      
+      if (isLiked) {
+        // Unlike: Remove user from likedBy and decrease count
+        const updates = {
+          likes: likes - 1,
+          [`likedBy/${userId}`]: null
+        };
+        await update(postRef, updates);
+      } else {
+        // Like: Add user to likedBy and increase count
+        const updates = {
+          likes: likes + 1,
+          [`likedBy/${userId}`]: true
+        };
+        await update(postRef, updates);
+      }
+      
+      setIsLiked(!isLiked);
+      toast.success(isLiked ? "Post unliked" : "Post liked!");
+    } catch (error) {
+      console.error("Failed to update like:", error);
+      toast.error("Failed to update like");
+    }
+  };
+
+  // Handle comment submission
+  const handleAddComment = async (content: string) => {
+    try {
+      const newComment = {
+        content,
+        author: "anonymous",
+        authorName: "Anonymous",
+        createdAt: new Date().toISOString(),
+      };
+
+      const commentsRef = ref(db, `posts/${blogPost.id}/comments`);
+      const newCommentRef = push(commentsRef);
+      await set(newCommentRef, newComment);
+      
+      toast.success("Comment added successfully!");
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+      toast.error("Failed to add comment");
+    }
+  };
 
   return (
     <>
@@ -184,13 +484,21 @@ const BlogPost = () => {
             transition={{ delay: 0.4 }}
           >
             <div className="flex items-center gap-6">
-              <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
-                <Heart className="w-5 h-5" />
-                <span>{blogPost.likes}</span>
+              <button 
+                onClick={handleLike}
+                className={`flex items-center gap-2 transition-colors ${
+                  isLiked ? 'text-caluu-blue' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                <span>{likes}</span>
               </button>
-              <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+              <button 
+                onClick={() => setShowComments(!showComments)}
+                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+              >
                 <MessageCircle className="w-5 h-5" />
-                <span>{blogPost.comments}</span>
+                <span>{comments.length}</span>
               </button>
             </div>
             
@@ -201,6 +509,22 @@ const BlogPost = () => {
               url={currentUrl}
             />
           </motion.div>
+
+          {/* Comments Section */}
+          {showComments && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8"
+            >
+              <BlogComments
+                postId={blogPost.id}
+                initialComments={comments}
+                onAddComment={handleAddComment}
+              />
+            </motion.div>
+          )}
+
           <motion.div 
           className="flex justify-center mb-8"
           whileHover={{ scale: 1.05 }}
@@ -213,7 +537,7 @@ const BlogPost = () => {
             <Calculator className="w-5 h-5" />
             GO GPA Calculator
           </Link>
-        </motion.div> 
+          </motion.div>
 
           {/* Related Posts */}
           <motion.div 

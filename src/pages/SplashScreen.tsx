@@ -14,12 +14,12 @@ const SplashScreen = () => {
     // Trigger animation after a short delay
     const animationTimeout = setTimeout(() => {
       setStartAnimation(true);
-    }, 300);
+    }, 500);
 
     // Set animation completed after animation time
     const completionTimeout = setTimeout(() => {
       setAnimationCompleted(true);
-    }, 3000);
+    }, 5000);
 
     return () => {
       clearTimeout(animationTimeout);
@@ -90,8 +90,6 @@ const SplashScreen = () => {
           }}
           className="mb-8 relative"
         >
-  
-          
           {/* Sparkle effect */}
           <motion.div
             className="absolute -top-2 -right-2"
