@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle with gradient -->
+  <circle cx="256" cy="256" r="256" fill="url(#gradient)"/>
+  
+  <!-- Letter C with modern design -->
+  <path d="M340 172.5C318.5 151 291.5 140 259 140C226.5 140 199.5 151 178 172.5C156.5 194 145.75 221 145.75 253.5C145.75 286 156.5 313 178 334.5C199.5 356 226.5 367 259 367C291.5 367 318.5 356 340 334.5" 
+        stroke="white" 
+        stroke-width="48" 
+        stroke-linecap="round"
+        fill="none"/>
+  
+  <!-- Sparkle effects -->
+  <circle cx="380" cy="132" r="15" fill="white" opacity="0.8"/>
+  <circle cx="400" cy="162" r="8" fill="white" opacity="0.6"/>
+  <circle cx="112" cy="380" r="12" fill="white" opacity="0.7"/>
+  
+  <!-- Define gradient -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#1a365d"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Add subtle glow effect -->
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="5" result="glow"/>
+    <feMerge>
+      <feMergeNode in="glow"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+</svg> 

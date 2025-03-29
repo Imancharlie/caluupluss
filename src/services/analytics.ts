@@ -20,6 +20,13 @@ interface SessionData {
   userId?: string;
 }
 
+export interface AnalyticsMetrics {
+  totalSessions: number;
+  totalPageViews: number;
+  totalDuration: number;
+  averageSessionDuration: number;
+}
+
 export const analytics = {
   // Track page views
   trackPageView: async (path: string, userId?: string) => {
@@ -147,4 +154,42 @@ export const analytics = {
       console.error('Error tracking interaction:', error);
     }
   }
-}; 
+};
+
+export async function getMetrics(): Promise<AnalyticsMetrics> {
+  const metricsRef = ref(db, 'analytics');
+  const snapshot = await get(metricsRef);
+  return snapshot.val() || {
+    totalSessions: 0,
+    totalPageViews: 0,
+    totalDuration: 0,
+    averageSessionDuration: 0
+  };
+}
+
+export async function incrementPageViews() {
+  const metricsRef = ref(db, 'analytics');
+  await set(metricsRef, {
+    totalPageViews: increment(1)
+  }, { merge: true });
+}
+
+export async function incrementSessions() {
+  const metricsRef = ref(db, 'analytics');
+  await set(metricsRef, {
+    totalSessions: increment(1)
+  }, { merge: true });
+}
+
+export async function updateSessionDuration(duration: number) {
+  const metrics = await getMetrics();
+  const totalSessions = metrics.totalSessions || 1;
+  const totalDuration = (metrics.totalDuration || 0) + duration;
+  const averageSessionDuration = totalDuration / totalSessions;
+
+  const metricsRef = ref(db, 'analytics');
+  await set(metricsRef, {
+    totalDuration,
+    averageSessionDuration
+  }, { merge: true });
+} 

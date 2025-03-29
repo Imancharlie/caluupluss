@@ -1,47 +1,46 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { getDatabase, ref, get, set } from 'firebase/database';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAYBhczJ209zNq_vyJhlDJ2KfX32Bbq53k",
-  authDomain: "caluu-8e832.firebaseapp.com",
-  databaseURL: "https://caluu-8e832-default-rtdb.firebaseio.com",
-  projectId: "caluu-8e832",
-  storageBucket: "caluu-8e832.firebasestorage.app",
-  messagingSenderId: "12277271075",
-  appId: "1:12277271075:web:e947a31fd0d039f533ff96",
-  measurementId: "G-H4HZN3DWWB"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Realtime Database with specific configuration
-const db = getDatabase(app, firebaseConfig.databaseURL);
+// Initialize services
+export const auth = getAuth(app);
+export const db = getDatabase(app);
+export const firestore = getFirestore(app);
+export const storage = getStorage(app);
+export const analytics = getAnalytics(app);
 
 // Initialize analytics metrics if they don't exist
-const initializeMetrics = async () => {
-  try {
-    const metricsRef = ref(db, 'analytics/metrics');
-    const snapshot = await get(metricsRef);
-    
-    if (!snapshot.exists()) {
-      await set(metricsRef, {
-        totalSessions: 0,
-        totalPageViews: 0,
-        totalDuration: 0,
-        averageSessionDuration: 0,
-        featureUsage: {},
-        interactions: {}
-      });
-    }
-  } catch (error) {
-    console.error('Error initializing metrics:', error);
+async function initializeMetrics() {
+  const metricsRef = ref(db, 'analytics');
+  const snapshot = await get(metricsRef);
+  
+  if (!snapshot.exists()) {
+    await set(metricsRef, {
+      totalSessions: 0,
+      totalPageViews: 0,
+      totalDuration: 0,
+      averageSessionDuration: 0
+    });
   }
-};
+}
 
-// Initialize metrics when the app starts
 initializeMetrics();
 
-export { db };
-export const analytics = getAnalytics(app); 
+export default app; 

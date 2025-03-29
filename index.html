@@ -2,10 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <!-- Primary Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1e40af" />
+    <meta name="theme-color" content="#1a365d" />
     <meta name="description" content="CALUU - Your Academic Journey Simplified. Calculate your GPA, plan your academic journey, and track your progress." />
     <meta name="author" content="Kodin Softwares" />
     <meta name="keywords" content="GPA calculator, academic planning, grade point average, university grades, academic success, student tools, education planning" />
@@ -27,12 +28,20 @@
     <meta name="twitter:site" content="@kodinsoftwares" />
     <meta name="twitter:creator" content="@kodinsoftwares" />
     
-    <!-- Favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icon-192x192.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="72x72" href="/icons/icon-72x72.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="128x128" href="/icons/icon-128x128.png" />
+    <link rel="icon" type="image/png" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="icon" type="image/png" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="384x384" href="/icons/icon-384x384.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png" />
+    <link rel="mask-icon" href="/icons/maskable-512x512.png" color="#1a365d" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-TileColor" content="#1a365d" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     
     <!-- Preconnect to Important Domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -43,5 +52,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful');
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

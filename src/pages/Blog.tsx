@@ -82,7 +82,16 @@ const Blog = () => {
 
   // Scroll to top when component mounts or when search/sort changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollToTop = () => {
+      window.scrollTo({ 
+        top: 0, 
+        behavior: 'smooth'
+      });
+    };
+    
+    // Add a small delay to ensure smooth animation
+    const timer = setTimeout(scrollToTop, 100);
+    return () => clearTimeout(timer);
   }, [location, searchQuery, sortBy]);
 
   useEffect(() => {
@@ -111,6 +120,26 @@ const Blog = () => {
           return 0;
       }
     });
+
+  // Add smooth scroll to post cards
+  const handlePostClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target = e.currentTarget;
+    const href = target.getAttribute('href');
+    
+    // Smooth scroll to top first
+    window.scrollTo({ 
+      top: 0, 
+      behavior: 'smooth'
+    });
+    
+    // Then navigate after a short delay
+    setTimeout(() => {
+      if (href) {
+        window.location.href = href;
+      }
+    }, 300);
+  };
 
   return (
     <>
@@ -271,6 +300,7 @@ const Blog = () => {
                         </div>
                         <Link
                           to={`/blog/${post.slug}`}
+                          onClick={handlePostClick}
                           className="text-caluu-blue hover:text-caluu-blue-light flex items-center group"
                         >
                           Read more

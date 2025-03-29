@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { motion, LazyMotion, domAnimation } from "framer-motion";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { 
   Calendar, 
   Clock, 
@@ -16,15 +16,17 @@ import {
   Calculator
 } from "lucide-react";
 import SEO from "@/components/SEO";
-import AnimatedBackground from "@/components/AnimatedBackground";
-import SocialShare from "@/components/SocialShare";
-import Footer from "@/components/Footer";
-import BlogComments from "@/components/BlogComments";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { User } from "@/types/auth";
 import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, push, DatabaseReference } from 'firebase/database';
+import { ref, onValue, set, update, push } from 'firebase/database';
+
+// Lazy load components
+const AnimatedBackground = lazy(() => import("@/components/AnimatedBackground"));
+const SocialShare = lazy(() => import("@/components/SocialShare"));
+const Footer = lazy(() => import("@/components/Footer"));
+const BlogComments = lazy(() => import("@/components/BlogComments"));
 
 // Sample blog post data (in a real app, this would come from an API)
 const blogPost = {
@@ -387,6 +389,18 @@ const BlogPost = () => {
     }
   };
 
+  // Preload images
+  useEffect(() => {
+    const preloadImage = (src: string) => {
+      const img = new Image();
+      img.src = src;
+    };
+
+    // Preload main blog image and related post images
+    preloadImage(blogPost.image);
+    blogPost.relatedPosts.forEach(post => preloadImage(post.image));
+  }, []);
+
   return (
     <>
       <SEO 
@@ -402,127 +416,115 @@ const BlogPost = () => {
       <div className="min-h-screen bg-gradient-to-b from-caluu-blue-dark to-caluu-blue-light">
         {/* Hero Section */}
         <div className="relative h-[50vh] sm:h-[60vh] min-h-[400px] sm:min-h-[500px] flex items-center justify-center overflow-hidden">
-          <AnimatedBackground />
+          <Suspense fallback={<div className="animate-pulse bg-caluu-blue-dark/50 w-full h-full" />}>
+            <AnimatedBackground />
+          </Suspense>
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent" />
           
-          <motion.div 
-            className="relative text-center px-4 z-10 max-w-4xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Link
-              to="/blog"
-              className="inline-flex items-center text-white/80 hover:text-white mb-6 sm:mb-8 transition-colors"
+          <LazyMotion features={domAnimation}>
+            <motion.div 
+              className="relative text-center px-4 z-10 max-w-4xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Blog
-            </Link>
+              <Link
+                to="/blog"
+                className="inline-flex items-center text-white/80 hover:text-white mb-6 sm:mb-8 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Blog
+              </Link>
 
-            <div className="flex flex-wrap items-center justify-center gap-4 text-white/80 mb-4 sm:mb-6">
-              <span className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1" />
-                {new Date(blogPost.date).toLocaleDateString()}
-              </span>
-              <span className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
-                {blogPost.readTime}
-              </span>
-            </div>
-            
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
-              {blogPost.title}
-            </h1>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-              <span className="bg-caluu-blue text-white px-3 py-1 rounded-full text-sm">
-                {blogPost.category}
-              </span>
-              {blogPost.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="flex items-center text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full"
-                >
-                  <Tag className="w-3 h-3 mr-1" />
-                  {tag}
+              <div className="flex flex-wrap items-center justify-center gap-4 text-white/80 mb-4 sm:mb-6">
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  {new Date(blogPost.date).toLocaleDateString()}
                 </span>
-              ))}
-            </div>
-          </motion.div>
+                <span className="flex items-center">
+                  <Clock className="w-4 h-4 mr-1" />
+                  {blogPost.readTime}
+                </span>
+              </div>
+              
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
+                {blogPost.title}
+              </h1>
+              
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+                <span className="bg-caluu-blue text-white px-3 py-1 rounded-full text-sm">
+                  {blogPost.category}
+                </span>
+                {blogPost.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full"
+                  >
+                    <Tag className="w-3 h-3 mr-1" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          </LazyMotion>
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-          {/* Featured Image */}
-          <motion.div 
-            className="relative h-[300px] sm:h-[400px] rounded-xl overflow-hidden mb-8 sm:mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <img
-              src={blogPost.image}
-              alt={blogPost.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          </motion.div>
+          {/* Featured Image with loading optimization */}
+          <LazyMotion features={domAnimation}>
+            <motion.div 
+              className="relative h-[300px] sm:h-[400px] rounded-xl overflow-hidden mb-8 sm:mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <img
+                src={blogPost.image}
+                alt={blogPost.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            </motion.div>
+          </LazyMotion>
 
-          {/* Content */}
-          <motion.article 
-            className="prose prose-lg prose-invert max-w-none mb-8 sm:mb-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            dangerouslySetInnerHTML={{ __html: blogPost.content }}
-          />
+          {/* Content with optimized rendering */}
+          <LazyMotion features={domAnimation}>
+            <motion.article 
+              className="prose prose-lg prose-invert max-w-none mb-8 sm:mb-12"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              dangerouslySetInnerHTML={{ __html: blogPost.content }}
+            />
+          </LazyMotion>
 
           {/* Social Interaction */}
-          <motion.div 
-            className="flex items-center justify-between py-8 border-t border-white/10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="flex items-center gap-6">
-              <button 
-                onClick={handleLike}
-                className={`flex items-center gap-2 transition-colors ${
-                  isLiked ? 'text-caluu-blue' : 'text-white/80 hover:text-white'
-                }`}
-              >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                <span>{likes}</span>
-              </button>
-              <button 
-                onClick={() => setShowComments(!showComments)}
-                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>{comments.length}</span>
-              </button>
-            </div>
-            
+          <Suspense fallback={<div className="h-16 animate-pulse bg-white/5 rounded-lg" />}>
             <SocialShare
               title={blogPost.title}
               description={blogPost.content.substring(0, 160)}
               image={blogPost.image}
               url={currentUrl}
             />
-          </motion.div>
+          </Suspense>
 
-          {/* Comments Section */}
+          {/* Comments Section with lazy loading */}
           {showComments && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8"
-            >
-              <BlogComments
-                postId={blogPost.id}
-                initialComments={comments}
-                onAddComment={handleAddComment}
-              />
-            </motion.div>
+            <Suspense fallback={<div className="h-32 animate-pulse bg-white/5 rounded-lg mt-8" />}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8"
+              >
+                <BlogComments
+                  postId={blogPost.id}
+                  initialComments={comments}
+                  onAddComment={handleAddComment}
+                />
+              </motion.div>
+            </Suspense>
           )}
 
           <motion.div 
@@ -539,56 +541,60 @@ const BlogPost = () => {
           </Link>
           </motion.div>
 
-          {/* Related Posts */}
-          <motion.div 
-            className="mt-16"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h2 className="text-2xl font-bold text-white mb-8">Related Articles</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {blogPost.relatedPosts.map((post, index) => (
-                <motion.article
-                  key={post.id}
-                  className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
-                      <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(post.date).toLocaleDateString()}
-                      </span>
-                      <span className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {post.readTime}
-                      </span>
+          {/* Related Posts with optimized image loading */}
+          <LazyMotion features={domAnimation}>
+            <motion.div 
+              className="mt-16"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <h2 className="text-2xl font-bold text-white mb-8">Related Articles</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {blogPost.relatedPosts.map((post, index) => (
+                  <motion.article
+                    key={post.id}
+                    className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 + index * 0.1 }}
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={post.image}
+                        alt={post.title}
+                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     </div>
+                    
+                    <div className="p-6">
+                      <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {new Date(post.date).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {post.readTime}
+                        </span>
+                      </div>
 
-                    <h3 className="text-xl font-semibold mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors text-white">
-                      {post.title}
-                    </h3>
+                      <h3 className="text-xl font-semibold mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors text-white">
+                        {post.title}
+                      </h3>
 
-                    <p className="text-white/60 line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </motion.div>
+                      <p className="text-white/60 line-clamp-2">
+                        {post.excerpt}
+                      </p>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </motion.div>
+          </LazyMotion>
 
           {/* Navigation */}
           <motion.div 
@@ -609,7 +615,9 @@ const BlogPost = () => {
           
         </div>
 
-        <Footer />
+        <Suspense fallback={<div className="h-32 animate-pulse bg-white/5" />}>
+          <Footer />
+        </Suspense>
       </div>
     </>
   );

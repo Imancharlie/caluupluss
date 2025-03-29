@@ -1,45 +1,48 @@
-import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { analytics } from '@/services/analytics';
+import { useEffect, useState } from 'react';
+import { getMetrics, incrementPageViews, incrementSessions, updateSessionDuration, AnalyticsMetrics } from '../services/analytics';
 
-export const useAnalytics = () => {
-  const location = useLocation();
-  const { user } = useAuth();
-  const sessionRef = useRef<any>(null);
+export function useAnalytics() {
+  const [metrics, setMetrics] = useState<AnalyticsMetrics>({
+    totalSessions: 0,
+    totalPageViews: 0,
+    totalDuration: 0,
+    averageSessionDuration: 0
+  });
 
-  // Track page views and manage sessions
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
+
   useEffect(() => {
-    const startAnalytics = async () => {
+    const loadMetrics = async () => {
       try {
-        // Track page view
-        await analytics.trackPageView(location.pathname, user?.id?.toString());
-        
-        // Start new session if none exists
-        if (!sessionRef.current) {
-          sessionRef.current = await analytics.startSession(user?.id?.toString());
-        }
+        const currentMetrics = await getMetrics();
+        setMetrics(currentMetrics);
       } catch (error) {
-        console.error('Error starting analytics:', error);
+        console.error('Error loading metrics:', error);
       }
     };
 
-    startAnalytics();
+    loadMetrics();
+    incrementSessions().catch(console.error);
+    incrementPageViews().catch(console.error);
 
-    // End session when component unmounts
     return () => {
-      if (sessionRef.current) {
-        analytics.endSession(sessionRef.current, user?.id?.toString());
-        sessionRef.current = null;
-      }
+      const sessionDuration = (Date.now() - sessionStartTime) / 1000; // Convert to seconds
+      updateSessionDuration(sessionDuration).catch(console.error);
     };
-  }, [location.pathname, user?.id]);
+  }, []);
+
+  const trackPageView = async () => {
+    try {
+      await incrementPageViews();
+      const updatedMetrics = await getMetrics();
+      setMetrics(updatedMetrics);
+    } catch (error) {
+      console.error('Error tracking page view:', error);
+    }
+  };
 
   return {
-    trackFeature: (feature: string) => 
-      analytics.trackFeatureUsage(feature, user?.id?.toString()),
-    
-    trackInteraction: (type: string, details: any) =>
-      analytics.trackInteraction(type, details, user?.id?.toString())
+    metrics,
+    trackPageView
   };
-}; 
+} 
