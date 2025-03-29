@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { 
   Calendar, 
   Clock, 
@@ -75,9 +75,15 @@ const blogPosts: BlogPost[] = [
 ];
 
 const Blog = () => {
+  const location = useLocation();
   const [sortBy, setSortBy] = useState<"trending" | "latest" | "popular">("trending");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Scroll to top when component mounts or when search/sort changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location, searchQuery, sortBy]);
 
   useEffect(() => {
     // Simulate content loading
@@ -139,7 +145,7 @@ const Blog = () => {
         <div className="max-w-7xl mx-auto px-4 py-12">
           {/* Search and Sort Section */}
           <motion.div 
-            className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12"
+            className="flex flex-col md:flex-row justify-between items-center gap-4 mb-12 sticky top-4 z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -209,67 +215,71 @@ const Blog = () => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-            {sortedPosts.map((post, index) => (
-              <motion.article
-                key={post.id}
+                {sortedPosts.map((post, index) => (
+                  <motion.article
+                    key={post.id}
                     className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      delay: index * 0.1,
+                      duration: 0.3,
+                      ease: "easeOut"
+                    }}
                     layout
-              >
+                  >
                     <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                      <img
+                        src={post.image}
+                        alt={post.title}
+                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-                
-                <div className="p-6">
-                  <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
-                    <span className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      {new Date(post.date).toLocaleDateString()}
-                    </span>
-                    <span className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {post.readTime}
-                    </span>
-                  </div>
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
+                        <span className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {new Date(post.date).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {post.readTime}
+                        </span>
+                      </div>
 
-                  <h2 className="text-xl font-semibold mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors text-white">
-                    {post.title}
-                  </h2>
+                      <h2 className="text-xl font-semibold mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors text-white">
+                        {post.title}
+                      </h2>
 
                       <p className="text-white/60 line-clamp-2 mb-4">
-                    {post.excerpt}
-                  </p>
+                        {post.excerpt}
+                      </p>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm text-white/60">
-                      <span className="flex items-center">
-                        <Heart className="w-4 h-4 mr-1" />
-                        {post.likes}
-                      </span>
-                      <span className="flex items-center">
-                        <MessageCircle className="w-4 h-4 mr-1" />
-                        {post.comments}
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm text-white/60">
+                          <span className="flex items-center">
+                            <Heart className="w-4 h-4 mr-1" />
+                            {post.likes}
+                          </span>
+                          <span className="flex items-center">
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            {post.comments}
+                          </span>
+                        </div>
+                        <Link
+                          to={`/blog/${post.slug}`}
+                          className="text-caluu-blue hover:text-caluu-blue-light flex items-center group"
+                        >
+                          Read more
+                          <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
                     </div>
-                    <Link
-                      to={`/blog/${post.slug}`}
-                      className="text-caluu-blue hover:text-caluu-blue-light flex items-center group"
-                    >
-                      Read more
-                      <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
+                  </motion.article>
+                ))}
               </motion.div>
             )}
           </AnimatePresence>

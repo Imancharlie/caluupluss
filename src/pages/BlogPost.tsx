@@ -230,8 +230,8 @@ const blogPost = {
       <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
         <h2 class="text-2xl font-bold text-white mb-4">Need Help Calculating Your GPA?</h2>
         <p class="text-white/80 mb-4">Use our GPA Calculator to easily calculate your GPA and track your academic progress at UDSM.</p>
-        <a href="/calculator" class="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-6 py-3 rounded-full font-semibold transition-colors">
-          Try GPA Calculator
+        <a href="/" class="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-6 py-3 rounded-full font-semibold transition-colors">
+          <p>Try GPA Calculator</p>
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
@@ -531,7 +531,7 @@ const BlogPost = () => {
           whileTap={{ scale: 0.95 }}
         >
           <Link 
-            to="/calculator"
+            to="/"
             className="bg-caluu-blue hover:bg-caluu-blue/90 text-white px-8 py-3 rounded-full font-semibold flex items-center gap-2 transition-colors"
           >
             <Calculator className="w-5 h-5" />

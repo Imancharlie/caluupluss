@@ -1,8 +1,9 @@
 export interface User {
   uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  // Add any other properties your user object might have
 }
 
 export interface AuthContextType {
