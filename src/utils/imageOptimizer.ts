@@ -1,10 +1,6 @@
 export const getOptimizedImageUrl = (url: string, width: number = 800) => {
-  // If it's a Firebase Storage URL, add size parameters
-  if (url.includes('firebasestorage.googleapis.com')) {
-    return `${url}?width=${width}`;
-  }
-  
-  // If it's a local image, use the original
+  // Return the original URL for now
+  // You can implement your own image optimization logic here
   return url;
 };
 

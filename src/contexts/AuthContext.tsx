@@ -43,8 +43,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize auth state from localStorage
   useEffect(() => {
-    checkAuth();
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      const savedUser = localStorage.getItem('user');
+      
+      if (token && savedUser) {
+        try {
+          // Set the token in axios instance
+          api.defaults.headers.common['Authorization'] = `Token ${token}`;
+          
+          // Try to validate the token
+          const response = await api.get('/api/auth/check/');
+          
+          if (response.data && response.data.user) {
+            setUser(response.data.user);
+            // Update stored user data if needed
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+          } else {
+            // If no user data in response, use saved user
+            setUser(JSON.parse(savedUser));
+          }
+        } catch (error) {
+          console.error("Token validation failed:", error);
+          // Only clear auth if it's a 401 error
+          if ((error as AxiosError).response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          } else {
+            // For other errors, keep the saved user
+            setUser(JSON.parse(savedUser));
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const checkAuth = async () => {
@@ -54,34 +91,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!token) {
         setUser(null);
-        setLoading(false);
         return;
       }
       
+      // Set the token in axios instance
+      api.defaults.headers.common['Authorization'] = `Token ${token}`;
+      
       // Validate token with backend
       try {
-        const response = await api.get('/api/auth/check/', {
-          headers: {
-            'Authorization': `Token ${token}`
-          }
-        });
+        const response = await api.get('/api/auth/check/');
         
         if (response.data && response.data.user) {
           setUser(response.data.user);
+          // Update stored user data if needed
+          localStorage.setItem('user', JSON.stringify(response.data.user));
         }
       } catch (error) {
         console.error("Token validation failed:", error);
+        // Only clear auth if it's a 401 error
+        if ((error as AxiosError).response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      // Only clear auth if it's a 401 error
+      if ((error as AxiosError).response?.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setUser(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -104,8 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_staff: is_staff
       };
 
+      // Store auth data
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Set the token in axios instance
+      api.defaults.headers.common['Authorization'] = `Token ${token}`;
+      
       setUser(userData);
       toast.success('Successfully signed in!');
     } catch (error) {
@@ -192,8 +238,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         });
       }
+      // Clear auth data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       toast.success('Successfully signed out!');
     } catch (error) {
@@ -204,6 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if the server request fails, clear the local storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
     }
   };

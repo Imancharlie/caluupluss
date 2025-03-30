@@ -6,9 +6,17 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const SplashScreen = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, checkAuth } = useAuth();
   const [startAnimation, setStartAnimation] = useState(false);
   const [animationCompleted, setAnimationCompleted] = useState(false);
+
+  // Check authentication status when component mounts
+  useEffect(() => {
+    const validateAuth = async () => {
+      await checkAuth();
+    };
+    validateAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     // Trigger animation after a short delay

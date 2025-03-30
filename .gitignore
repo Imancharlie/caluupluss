@@ -52,3 +52,10 @@ out/
 .cache/
 .npm/
 .eslintcache
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production

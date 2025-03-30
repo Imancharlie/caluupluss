@@ -1,8 +1,9 @@
 [build]
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "18"
   NPM_VERSION = "10"
 
 [[redirects]]
@@ -14,6 +15,7 @@
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"

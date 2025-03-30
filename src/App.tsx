@@ -7,7 +7,6 @@ import { AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { HelmetProvider } from "react-helmet-async";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAnalytics } from "@/hooks/useAnalytics";
 import SplashScreen from "./pages/SplashScreen";
 import SelectionPage from "./pages/SelectionPage";
 import ElectiveSelection from "./pages/ElectiveSelection";
@@ -31,71 +30,79 @@ const queryClient = new QueryClient({
   },
 });
 
-// Analytics wrapper component
-const AnalyticsWrapper = ({ children }: { children: React.ReactNode }) => {
-  useAnalytics(); // This will track page views and sessions
-  return <>{children}</>;
-};
+function AppRoutes() {
+  const location = useLocation();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <HelmetProvider>
-        <div className="min-h-screen bg-background dark">
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public Routes */}
+        <Route path="/" element={<SplashScreen />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/selection"
+          element={
+            <ProtectedRoute>
+              <SelectionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/elective-selection"
+          element={
+            <ProtectedRoute>
+              <ElectiveSelection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gpa-calculator"
+          element={
+            <ProtectedRoute>
+              <GpaCalculator />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin/upload"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminUpload />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
+function App() {
+  return (
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
           <BrowserRouter>
             <AuthProvider>
-              <AnalyticsWrapper>
-                <Routes>
-                  <Route path="/" element={<SplashScreen />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/blog/:slug" element={<BlogPost />} />
-                  <Route 
-                    path="/selection" 
-                    element={
-                      <ProtectedRoute>
-                        <SelectionPage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/elective-selection" 
-                    element={
-                      <ProtectedRoute>
-                        <ElectiveSelection />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/calculator" 
-                    element={
-                      <ProtectedRoute>
-                        <GpaCalculator />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route 
-                    path="/admin/upload" 
-                    element={
-                      <ProtectedRoute requireAdmin>
-                        <AdminUpload />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  {/* Fallback route for unknown paths */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AnalyticsWrapper>
+              <AppRoutes />
+              <Toaster />
+              <Sonner />
             </AuthProvider>
           </BrowserRouter>
-        </div>
-      </HelmetProvider>
-      <Sonner />
-      <Toaster />
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
+  );
+}
 
 export default App;

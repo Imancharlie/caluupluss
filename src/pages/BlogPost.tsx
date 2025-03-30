@@ -19,8 +19,8 @@ import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-hot-toast";
 import { User } from "@/types/auth";
-import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, push } from 'firebase/database';
+import { blogService } from "@/services/blogService";
+import type { BlogPost } from "@/types/blog";
 
 // Lazy load components
 const AnimatedBackground = lazy(() => import("@/components/AnimatedBackground"));
@@ -28,391 +28,136 @@ const SocialShare = lazy(() => import("@/components/SocialShare"));
 const Footer = lazy(() => import("@/components/Footer"));
 const BlogComments = lazy(() => import("@/components/BlogComments"));
 
-// Sample blog post data (in a real app, this would come from an API)
-const blogPost = {
-  id: "1",
-  title: "How to Calculate Your GPA: A Complete Guide for UDSM Students",
-  content: `
-    <div class="space-y-8">
-      <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-        <h2 class="text-2xl font-bold text-white mb-4">Quick Summary</h2>
-        <ul class="list-disc list-inside space-y-2 text-white/80">
-          <li>Learn how to calculate your GPA at UDSM</li>
-          <li>Understand the UDSM grading system</li>
-          <li>Follow a step-by-step calculation example</li>
-          <li>Get tips for maintaining a high GPA</li>
-        </ul>
-      </div>
-
-      <div>
-        <h2 class="text-2xl font-bold text-white mb-4">Understanding the Basics</h2>
-        <p class="text-white/80 mb-4">Your GPA (Grade Point Average) is a numerical representation of your academic performance. It's calculated by:</p>
-        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 space-y-4">
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">1</div>
-            <div>
-              <h3 class="text-lg font-semibold text-white mb-2">Convert Letter Grades</h3>
-              <p class="text-white/80">Transform your letter grades into grade points using UDSM's grading scale.</p>
-            </div>
-          </div>
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">2</div>
-            <div>
-              <h3 class="text-lg font-semibold text-white mb-2">Multiply by Credit Hours</h3>
-              <p class="text-white/80">Multiply each course's grade points by its credit hours to get quality points.</p>
-            </div>
-          </div>
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-8 h-8 bg-caluu-blue rounded-full flex items-center justify-center text-white font-bold">3</div>
-            <div>
-              <h3 class="text-lg font-semibold text-white mb-2">Calculate Total</h3>
-              <p class="text-white/80">Add up all quality points and divide by total credit hours for your GPA.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h2 class="text-2xl font-bold text-white mb-4">UDSM Grading System</h2>
-        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <h3 class="text-xl font-semibold text-white mb-4">Letter Grades</h3>
-              <ul class="space-y-2 text-white/80">
-                <li class="flex justify-between"><span>A</span><span>5.0</span></li>
-                <li class="flex justify-between"><span>B+</span><span>4.0</span></li>
-                <li class="flex justify-between"><span>B</span><span>3.0</span></li>
-                <li class="flex justify-between"><span>C</span><span>2.0</span></li>
-                <li class="flex justify-between"><span>D</span><span>1.0</span></li>
-                <li class="flex justify-between"><span>F</span><span>0.0</span></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h2 class="text-2xl font-bold text-white mb-4">Example: GPA Calculation for BSc. Electrical Engineering</h2>
-        <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 overflow-x-auto">
-          <table class="w-full text-white/80">
-            <thead>
-              <tr class="border-b border-white/10">
-                <th class="text-left py-3 px-4">Course Code</th>
-                <th class="text-left py-3 px-4">Course Name</th>
-                <th class="text-center py-3 px-4">Credit Hours</th>
-                <th class="text-center py-3 px-4">Grade</th>
-                <th class="text-center py-3 px-4">Grade Points</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-white/10">
-              <tr>
-                <td class="py-3 px-4">EE221</td>
-                <td class="py-3 px-4">High Voltage</td>
-                <td class="text-center py-3 px-4">12.0</td>
-                <td class="text-center py-3 px-4">B</td>
-                <td class="text-center py-3 px-4">3.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">EE241</td>
-                <td class="py-3 px-4">Measurements</td>
-                <td class="text-center py-3 px-4">12.0</td>
-                <td class="text-center py-3 px-4">B+</td>
-                <td class="text-center py-3 px-4">4.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">MT261</td>
-                <td class="py-3 px-4">Matrices for Non-majors</td>
-                <td class="text-center py-3 px-4">12.0</td>
-                <td class="text-center py-3 px-4">A</td>
-                <td class="text-center py-3 px-4">5.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">EE231</td>
-                <td class="py-3 px-4">Electronics</td>
-                <td class="text-center py-3 px-4">8.0</td>
-                <td class="text-center py-3 px-4">A</td>
-                <td class="text-center py-3 px-4">5.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">EE253</td>
-                <td class="py-3 px-4">Electromagnetism</td>
-                <td class="text-center py-3 px-4">8.0</td>
-                <td class="text-center py-3 px-4">B+</td>
-                <td class="text-center py-3 px-4">4.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">ME213</td>
-                <td class="py-3 px-4">Material Science</td>
-                <td class="text-center py-3 px-4">8.0</td>
-                <td class="text-center py-3 px-4">A</td>
-                <td class="text-center py-3 px-4">5.0</td>
-              </tr>
-              <tr>
-                <td class="py-3 px-4">EE251</td>
-                <td class="py-3 px-4">Network Analysis</td>
-                <td class="text-center py-3 px-4">8.0</td>
-                <td class="text-center py-3 px-4">B</td>
-                <td class="text-center py-3 px-4">3.0</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="mt-6 space-y-4">
-          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 class="text-xl font-semibold text-white mb-4">Step 1: Calculate Weighted Grade Points</h3>
-            <ul class="space-y-2 text-white/80">
-              <li>EE221: 12.0 × 3.0 = 36.0</li>
-              <li>EE241: 12.0 × 4.0 = 48.0</li>
-              <li>MT261: 12.0 × 5.0 = 60.0</li>
-              <li>EE231: 8.0 × 5.0 = 40.0</li>
-              <li>EE253: 8.0 × 4.0 = 32.0</li>
-              <li>ME213: 8.0 × 5.0 = 40.0</li>
-              <li>EE251: 8.0 × 3.0 = 24.0</li>
-    </ul>
-          </div>
-
-          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 class="text-xl font-semibold text-white mb-4">Step 2: Calculate Total</h3>
-            <p class="text-white/80 mb-2">Total Weighted Grade Points = 36.0 + 48.0 + 60.0 + 40.0 + 32.0 + 24.0 + 40.0 = <span class="text-caluu-blue font-bold">280.0</span></p>
-            <p class="text-white/80 mb-2">Total Credit Hours = 12.0 + 12.0 + 12.0 + 8.0 + 8.0 + 8.0 + 8.0 = <span class="text-caluu-blue font-bold">68.0</span></p>
-            <p class="text-white/80">Final GPA = 280.0 ÷ 68.0 = <span class="text-caluu-blue font-bold">4.1 </span>  upper second</p>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h2 class="text-2xl font-bold text-white mb-4">Tips for Success at UDSM</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 class="text-xl font-semibold text-white mb-4">Study Strategies</h3>
-            <ul class="space-y-3 text-white/80">
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Attend all lectures and practical sessions</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Take detailed notes during classes</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Review material regularly</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Practice with past papers</span>
-              </li>
-            </ul>
-          </div>
-          <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 class="text-xl font-semibold text-white mb-4">Time Management</h3>
-            <ul class="space-y-3 text-white/80">
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Start assignments early</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Break down large tasks</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Use a planner or digital calendar</span>
-              </li>
-              <li class="flex items-start gap-2">
-                <span class="text-caluu-blue">•</span>
-                <span>Set realistic goals</span>
-              </li>
-    </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-        <h2 class="text-2xl font-bold text-white mb-4">Need Help Calculating Your GPA?</h2>
-        <p class="text-white/80 mb-4">Use our GPA Calculator to easily calculate your GPA and track your academic progress at UDSM.</p>
-        <a href="/" class="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-6 py-3 rounded-full font-semibold transition-colors">
-          <p>Try GPA Calculator</p>
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-      </div>
-    </div>
-  `,
-  author: "Iman charlie",
-  date: "2024-03-15",
-  readTime: "5 min read",
-  category: "GPA Calculation",
-  tags: ["GPA", "Grades", "Academic Success", "Study Tips"],
-  likes: 45,
-  comments: 3,
-  image: "/blog/gpa-guide.jpg",
-  relatedPosts: [
-    {
-      id: "2",
-      title: "Understanding Different Grading Systems",
-      excerpt: "Explore various grading systems used in universities and how they affect your GPA calculation.",
-      image: "/blog/grading-systems.jpg",
-      date: "2024-03-10",
-      readTime: "4 min read",
-    },
-    {
-      id: "3",
-      title: "Tips for Maintaining a High GPA",
-      excerpt: "Discover proven strategies and tips to maintain a high GPA throughout your academic journey.",
-      image: "/blog/maintain-gpa.jpg",
-      date: "2024-03-05",
-      readTime: "6 min read",
-    }
-  ]
-};
-
-interface CommentData {
-  content: string;
-  author: string;
-  authorName: string;
-  createdAt: string;
-}
-
-interface Comment extends CommentData {
-  id: string;
-}
-
-const BlogPost = () => {
-  const { slug } = useParams();
-  const currentUrl = window.location.href;
+const BlogPostPage = () => {
+  const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [showComments, setShowComments] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load comments and likes on component mount
   useEffect(() => {
-    const loadData = async () => {
+    const fetchPost = async () => {
       try {
-        // Load comments
-        const commentsRef = ref(db, `posts/${blogPost.id}/comments`);
-        onValue(commentsRef, (snapshot) => {
-          const commentsData = snapshot.val();
-          if (commentsData) {
-            const loadedComments = Object.entries(commentsData).map(([id, data]: [string, CommentData]) => ({
-              id,
-              ...data as CommentData
-            }));
-            setComments(loadedComments);
-          } else {
-            setComments([]);
-          }
-        });
-
-        // Load likes and check if user has liked
-        const postRef = ref(db, `posts/${blogPost.id}`);
-        onValue(postRef, (snapshot) => {
-          const postData = snapshot.val();
-          if (postData) {
-            setLikes(postData.likes || 0);
-            // Check if user has liked this post
-            const userId = user?.uid || 'anonymous';
-            if (postData.likedBy && postData.likedBy[userId]) {
-              setIsLiked(true);
-            }
-          } else {
-            // Initialize post if it doesn't exist
-            set(postRef, {
-              title: blogPost.title,
-              likes: 0,
-              likedBy: {},
-              createdAt: new Date().toISOString()
-            });
-          }
-        });
-
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast.error("Error loading data");
+        setIsLoading(true);
+        const postData = await blogService.getPost(slug || '') as BlogPost;
+        if (postData) {
+          setPost(postData);
+          setLikes(postData.likes || 0);
+          setIsLiked(postData.is_liked || false);
+        }
+      } catch (err) {
+        setError('Failed to load blog post');
+        console.error('Error fetching blog post:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadData();
-  }, [blogPost.id, user?.uid]);
 
-  // Handle like functionality
+    if (slug) {
+      fetchPost();
+    }
+  }, [slug]);
+
   const handleLike = async () => {
+    if (!user) {
+      toast.error('Please login to like posts');
+      return;
+    }
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
-      const postRef = ref(db, `posts/${blogPost.id}`);
-      const userId = user?.uid || 'anonymous';
-      
-      if (isLiked) {
-        // Unlike: Remove user from likedBy and decrease count
-        const updates = {
-          likes: likes - 1,
-          [`likedBy/${userId}`]: null
-        };
-        await update(postRef, updates);
-      } else {
-        // Like: Add user to likedBy and increase count
-        const updates = {
-          likes: likes + 1,
-          [`likedBy/${userId}`]: true
-        };
-        await update(postRef, updates);
-      }
-      
-      setIsLiked(!isLiked);
-      toast.success(isLiked ? "Post unliked" : "Post liked!");
-    } catch (error) {
-      console.error("Failed to update like:", error);
-      toast.error("Failed to update like");
+      if (!post) return;
+      const response = await blogService.likePost(post.id);
+      setLikes(response.likes);
+      setIsLiked(response.is_liked);
+      toast.success('Post liked successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to like post');
+      console.error('Error liking post:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Handle comment submission
+  const handleUnlike = async () => {
+    if (!user) {
+      toast.error('Please login to unlike posts');
+      return;
+    }
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      if (!post) return;
+      const response = await blogService.unlikePost(post.id);
+      setLikes(response.likes);
+      setIsLiked(response.is_liked);
+      toast.success('Post unliked successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to unlike post');
+      console.error('Error unliking post:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAddComment = async (content: string) => {
-    try {
-      const newComment = {
-        content,
-        author: "anonymous",
-        authorName: "Anonymous",
-        createdAt: new Date().toISOString(),
-      };
+    if (!user) {
+      toast.error('Please login to comment');
+      return;
+    }
 
-      const commentsRef = ref(db, `posts/${blogPost.id}/comments`);
-      const newCommentRef = push(commentsRef);
-      await set(newCommentRef, newComment);
-      
-      toast.success("Comment added successfully!");
-    } catch (error) {
-      console.error("Failed to add comment:", error);
-      toast.error("Failed to add comment");
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      if (!post) return;
+      const newComment = await blogService.addComment(post.id, content);
+      setPost(prev => prev ? {
+        ...prev,
+        comments: [...prev.comments, newComment]
+      } : null);
+      toast.success('Comment added successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to add comment');
+      console.error('Error adding comment:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Preload images
-  useEffect(() => {
-    const preloadImage = (src: string) => {
-      const img = new Image();
-      img.src = src;
-    };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-caluu-blue-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-white/20"></div>
+      </div>
+    );
+  }
 
-    // Preload main blog image and related post images
-    preloadImage(blogPost.image);
-    blogPost.relatedPosts.forEach(post => preloadImage(post.image));
-  }, []);
+  if (error || !post) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Error</h1>
+          <p className="text-white/80">{error || 'Post not found'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <SEO 
-        title={`${blogPost.title} - GPA Calculator Blog`}
-        description={blogPost.content.substring(0, 160)}
-        type="article"
-        publishedTime={blogPost.date}
-        author={blogPost.author}
-        image={blogPost.image}
-        url={currentUrl}
+    <LazyMotion features={domAnimation}>
+      <SEO
+        title={post.title}
+        description="Learn how to calculate your GPA at UDSM"
+        image="/images/blog/gpa-guide.jpg"
       />
-      
       <div className="min-h-screen bg-gradient-to-b from-caluu-blue-dark to-caluu-blue-light">
         {/* Hero Section */}
         <div className="relative h-[50vh] sm:h-[60vh] min-h-[400px] sm:min-h-[500px] flex items-center justify-center overflow-hidden">
@@ -439,23 +184,23 @@ const BlogPost = () => {
             <div className="flex flex-wrap items-center justify-center gap-4 text-white/80 mb-4 sm:mb-6">
               <span className="flex items-center">
                 <Calendar className="w-4 h-4 mr-1" />
-                {new Date(blogPost.date).toLocaleDateString()}
+                  {new Date(post.created_at).toLocaleDateString()}
               </span>
               <span className="flex items-center">
                 <Clock className="w-4 h-4 mr-1" />
-                {blogPost.readTime}
+                  5 min read
               </span>
             </div>
             
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
-              {blogPost.title}
+                {post.title}
             </h1>
             
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
               <span className="bg-caluu-blue text-white px-3 py-1 rounded-full text-sm">
-                {blogPost.category}
+                  GPA Calculation
               </span>
-              {blogPost.tags.map((tag) => (
+                {post.tags?.map((tag: string) => (
                 <span
                   key={tag}
                   className="flex items-center text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full"
@@ -479,8 +224,8 @@ const BlogPost = () => {
             transition={{ delay: 0.2 }}
           >
             <img
-              src={blogPost.image}
-              alt={blogPost.title}
+                src={post.image || "/blog/gpa-guide.jpg"}
+                alt={post.title}
               className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -496,36 +241,56 @@ const BlogPost = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            dangerouslySetInnerHTML={{ __html: blogPost.content }}
+              dangerouslySetInnerHTML={{ __html: post.content }}
           />
           </LazyMotion>
 
           {/* Social Interaction */}
           <Suspense fallback={<div className="h-16 animate-pulse bg-white/5 rounded-lg" />}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={isLiked ? handleUnlike : handleLike}
+                  disabled={isSubmitting || !user}
+                  className={`flex items-center gap-2 transition-colors ${
+                    isLiked ? 'text-red-500' : 'text-white/80 hover:text-white'
+                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''} ${
+                    !user ? 'cursor-not-allowed opacity-50' : ''
+                  }`}
+                  title={!user ? 'Please login to like posts' : ''}
+                >
+                  <Heart className={`w-5 h-5 ${isSubmitting ? 'animate-pulse' : ''}`} />
+                  <span>{likes}</span>
+                </button>
+                <div className="flex items-center gap-2 text-white/80">
+                  <MessageCircle className="w-5 h-5" />
+                  <span>{post.comments?.length || 0}</span>
+                </div>
+              </div>
             <SocialShare
-              title={blogPost.title}
-              description={blogPost.content.substring(0, 160)}
-              image={blogPost.image}
-              url={currentUrl}
-            />
+                title={post.title}
+                description="Learn how to calculate your GPA at UDSM"
+                image={post.image || "/blog/gpa-guide.jpg"}
+                url={window.location.href}
+              />
+            </div>
           </Suspense>
 
-          {/* Comments Section with lazy loading */}
-          {showComments && (
+          {/* Comments Section */}
             <Suspense fallback={<div className="h-32 animate-pulse bg-white/5 rounded-lg mt-8" />}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-8"
               >
-                <BlogComments
-                  postId={blogPost.id}
-                  initialComments={comments}
-                  onAddComment={handleAddComment}
-                />
+              <BlogComments
+                postId={post.id}
+                initialComments={post.comments || []}
+                onAddComment={handleAddComment}
+                isAuthenticated={!!user}
+              />
               </motion.div>
             </Suspense>
-          )}
 
           <motion.div 
           className="flex justify-center mb-8"
@@ -540,87 +305,14 @@ const BlogPost = () => {
             GO GPA Calculator
           </Link>
           </motion.div>
-
-          {/* Related Posts with optimized image loading */}
-          <LazyMotion features={domAnimation}>
-          <motion.div 
-            className="mt-16"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h2 className="text-2xl font-bold text-white mb-8">Related Articles</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {blogPost.relatedPosts.map((post, index) => (
-                <motion.article
-                  key={post.id}
-                  className="group bg-white/10 backdrop-blur-sm rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-white/10"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        decoding="async"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
-                      <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(post.date).toLocaleDateString()}
-                      </span>
-                      <span className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {post.readTime}
-                      </span>
-                    </div>
-
-                    <h3 className="text-xl font-semibold mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors text-white">
-                      {post.title}
-                    </h3>
-
-                    <p className="text-white/60 line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          </motion.div>
-          </LazyMotion>
-
-          {/* Navigation */}
-          <motion.div 
-            className="flex items-center justify-between py-6 sm:py-8 border-t border-white/10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Previous Article</span>
-            </button>
-            <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
-              <span className="hidden sm:inline">Next Article</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </motion.div>
-          
         </div>
 
         <Suspense fallback={<div className="h-32 animate-pulse bg-white/5" />}>
         <Footer />
         </Suspense>
       </div>
-    </>
+    </LazyMotion>
   );
 };
 
-export default BlogPost; 
+export default BlogPostPage; 

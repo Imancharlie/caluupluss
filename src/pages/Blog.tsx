@@ -13,72 +13,50 @@ import {
 } from "lucide-react";
 import SEO from "@/components/SEO";
 import AnimatedBackground from "@/components/AnimatedBackground";
-
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  readTime: string;
-  image: string;
-  slug: string;
-  likes: number;
-  comments: number;
-  views: number;
-  date: string;
-  tags: string[];
-}
-
-const blogPosts: BlogPost[] = [
-  {
-    id: "1",
-    title: "How to Calculate Your GPA: A Complete Guide",
-    excerpt: "Learn everything you need to know about calculating your GPA, including different grading systems and how to handle different credit hours.",
-    category: "GPA Calculation",
-    readTime: "5 min read",
-    image: "/blog/gpa-guide.jpg",
-    slug: "how-to-calculate-gpa",
-    likes: 245,
-    comments: 32,
-    views: 1234,
-    date: "2024-03-15",
-    tags: ["GPA", "Grades", "Academic Success"]
-  },
-  {
-    id: "2",
-    title: "Understanding Different Grading Systems",
-    excerpt: "Explore various grading systems used in universities and how they affect your GPA calculation.",
-    category: "Grading Systems",
-    readTime: "4 min read",
-    image: "/blog/grading-systems.jpg",
-    slug: "grading-systems-guide",
-    likes: 189,
-    comments: 24,
-    views: 987,
-    date: "2024-03-10",
-    tags: ["Grading", "Education", "University"]
-  },
-  {
-    id: "3",
-    title: "Tips for Maintaining a High GPA",
-    excerpt: "Discover proven strategies and tips to maintain a high GPA throughout your academic journey.",
-    category: "Academic Success",
-    readTime: "6 min read",
-    image: "/blog/maintain-gpa.jpg",
-    slug: "maintain-high-gpa",
-    likes: 312,
-    comments: 45,
-    views: 1567,
-    date: "2024-03-05",
-    tags: ["Success", "Study Tips", "Academic Performance"]
-  }
-];
+import { blogService } from "@/services/blogService";
+import { BlogPost } from "@/types/blog";
 
 const Blog = () => {
   const location = useLocation();
   const [sortBy, setSortBy] = useState<"trending" | "latest" | "popular">("trending");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const apiPosts = await blogService.getAllPosts();
+        // Transform API posts to match our UI structure
+        const transformedPosts = apiPosts.map(post => ({
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          excerpt: post.excerpt || post.content.substring(0, 150) + '...',
+          image: post.image || '/blog/gpa-guide.jpg',
+          slug: post.slug,
+          likes: post.likes,
+          comments: post.comments || [],
+          views: 0,
+          created_at: post.created_at,
+          tags: post.tags || ['GPA', 'Grades', 'Academic Success'],
+          is_liked: post.is_liked,
+          category: post.category,
+          readTime: post.readTime
+        }));
+        setPosts(transformedPosts);
+      } catch (err) {
+        setError('Failed to load blog posts');
+        console.error('Error fetching blog posts:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // Scroll to top when component mounts or when search/sort changes
   useEffect(() => {
@@ -89,31 +67,23 @@ const Blog = () => {
       });
     };
     
-    // Add a small delay to ensure smooth animation
     const timer = setTimeout(scrollToTop, 100);
     return () => clearTimeout(timer);
   }, [location, searchQuery, sortBy]);
 
-  useEffect(() => {
-    // Simulate content loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const sortedPosts = [...blogPosts]
+  const sortedPosts = [...posts]
     .filter(post => 
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (post.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .sort((a, b) => {
       switch (sortBy) {
         case "trending":
-          return (b.views + b.likes + b.comments) - (a.views + a.likes + a.comments);
+          return ((b.views || 0) + b.likes + (b.comments?.length || 0)) - 
+                 ((a.views || 0) + a.likes + (a.comments?.length || 0));
         case "latest":
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case "popular":
           return b.likes - a.likes;
         default:
@@ -127,13 +97,11 @@ const Blog = () => {
     const target = e.currentTarget;
     const href = target.getAttribute('href');
     
-    // Smooth scroll to top first
     window.scrollTo({ 
       top: 0, 
       behavior: 'smooth'
     });
     
-    // Then navigate after a short delay
     setTimeout(() => {
       if (href) {
         window.location.href = href;
@@ -236,6 +204,14 @@ const Blog = () => {
                   </motion.div>
                 ))}
               </motion.div>
+            ) : error ? (
+              <motion.div 
+                className="text-center py-12"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <p className="text-white/80 text-lg">{error}</p>
+              </motion.div>
             ) : (
               <motion.div 
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -271,11 +247,11 @@ const Blog = () => {
                       <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
                         <span className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(post.date).toLocaleDateString()}
+                          {new Date(post.created_at).toLocaleDateString()}
                         </span>
                         <span className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {post.readTime}
+                          5 min read
                         </span>
                       </div>
 
@@ -295,7 +271,7 @@ const Blog = () => {
                           </span>
                           <span className="flex items-center">
                             <MessageCircle className="w-4 h-4 mr-1" />
-                            {post.comments}
+                            {post.comments.length}
                           </span>
                         </div>
                         <Link
@@ -314,7 +290,7 @@ const Blog = () => {
             )}
           </AnimatePresence>
 
-          {!isLoading && sortedPosts.length === 0 && (
+          {!isLoading && !error && sortedPosts.length === 0 && (
             <motion.div 
               className="text-center py-12"
               initial={{ opacity: 0 }}

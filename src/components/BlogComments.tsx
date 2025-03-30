@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Send, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, Send, ChevronDown, ChevronUp, LogIn } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 interface Comment {
   id: string;
@@ -14,12 +16,14 @@ interface BlogCommentsProps {
   postId: string;
   initialComments: Comment[];
   onAddComment: (content: string) => Promise<void>;
+  isAuthenticated: boolean;
 }
 
-const BlogComments = ({ postId, initialComments, onAddComment }: BlogCommentsProps) => {
+const BlogComments = ({ postId, initialComments, onAddComment, isAuthenticated }: BlogCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,74 +34,114 @@ const BlogComments = ({ postId, initialComments, onAddComment }: BlogCommentsPro
       await onAddComment(newComment);
       setNewComment('');
     } catch (error) {
-      console.error('Failed to add comment:', error);
+      console.error('Error adding comment:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const toggleComments = () => {
+    if (!isAuthenticated) {
+      setIsExpanded(true); // Show the login prompt
+      return;
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 text-white/80">
-        <MessageCircle className="w-5 h-5" />
-        <h3 className="text-xl font-semibold">Comments ({comments.length})</h3>
-      </div>
-
-      {/* Comment Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5 text-white/60" />
-          </div>
-          <div className="flex-1">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white/80 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-caluu-blue"
-              rows={3}
-            />
-            <div className="flex justify-end mt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting || !newComment.trim()}
-                className="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-4 py-2 rounded-full font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="w-4 h-4" />
-                {isSubmitting ? 'Posting...' : 'Post Comment'}
-              </button>
-            </div>
-          </div>
+    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6">
+      <button
+        onClick={toggleComments}
+        className="w-full flex items-center justify-between text-white/80 hover:text-white transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5" />
+          <span className="font-semibold">Comments ({comments.length})</span>
         </div>
-      </form>
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </motion.div>
+      </button>
 
-      {/* Comments List */}
-      <div className="space-y-6">
-        {comments.map((comment, index) => (
+      <AnimatePresence>
+        {isExpanded && (
           <motion.div
-            key={comment.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="flex items-start gap-4"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
           >
-            <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-white/60" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium text-white">
-                  {comment.authorName}
-                </span>
-                <span className="text-sm text-white/40">
-                  {new Date(comment.createdAt).toLocaleDateString()}
-                </span>
+            {!isAuthenticated ? (
+              <div className="mt-6 text-center py-8">
+                <div className="bg-white/5 rounded-lg p-6">
+                  <LogIn className="w-12 h-12 text-white/60 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-white mb-2">Login to View Comments</h3>
+                  <p className="text-white/60 mb-6">Please login to view and add comments to this post.</p>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center gap-2 bg-caluu-blue hover:bg-caluu-blue/90 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login Now
+                  </Link>
+                </div>
               </div>
-              <p className="text-white/80">{comment.content}</p>
-            </div>
+            ) : (
+              <>
+                {/* Comment Form */}
+                <form onSubmit={handleSubmit} className="mt-6 mb-8">
+                  <div className="flex gap-4">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a comment..."
+                      className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || !newComment.trim()}
+                      className={`bg-caluu-blue text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        isSubmitting || !newComment.trim()
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-caluu-blue/90'
+                      }`}
+                    >
+                      <Send className="w-4 h-4" />
+                      {isSubmitting ? 'Posting...' : 'Post'}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Comments List */}
+                <div className="space-y-6">
+                  {comments.map((comment) => (
+                    <motion.div
+                      key={comment.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-white/5 rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-medium">{comment.authorName}</span>
+                        <span className="text-white/60 text-sm">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-white/80">{comment.content}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
           </motion.div>
-        ))}
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
