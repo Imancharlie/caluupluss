@@ -61,7 +61,7 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/gpa-calculator"
+          path="/calculator"
           element={
             <ProtectedRoute>
               <GpaCalculator />
