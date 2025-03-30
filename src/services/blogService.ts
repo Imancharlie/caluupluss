@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { BlogPost } from '@/types/blog';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://caluu.pythonanywhere.com/api';
+const BASE_URL = 'https://caluu.pythonanywhere.com';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -28,17 +29,26 @@ export interface Comment {
   createdAt: string;
 }
 
+// Helper function to process image URLs
+const processImageUrl = (post: BlogPost): BlogPost => {
+  if (post.image && !post.image.startsWith('http')) {
+    // If the image URL is relative, prepend the base URL
+    post.image = `${BASE_URL}${post.image}`;
+  }
+  return post;
+};
+
 export const blogService = {
   // Get a single blog post with its comments and likes
   getPost: async (slug: string): Promise<BlogPost> => {
     const response = await axiosInstance.get(`/blog/posts/${slug}/`);
-    return response.data;
+    return processImageUrl(response.data);
   },
 
   // Get all blog posts
   getAllPosts: async (): Promise<BlogPost[]> => {
     const response = await axiosInstance.get('/blog/posts/');
-    return response.data;
+    return response.data.map(processImageUrl);
   },
 
   // Add a comment to a blog post
