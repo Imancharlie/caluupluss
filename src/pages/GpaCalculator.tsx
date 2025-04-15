@@ -77,7 +77,7 @@ const GpaCalculator = () => {
     { grade: "B", points: 3.0 },
     { grade: "C", points: 2.0 },
     { grade: "D", points: 1.0 },
-    { grade: "F", points: 0.0 },
+    { grade: "E", points: 0.0 },
   ];
 
   useEffect(() => {
