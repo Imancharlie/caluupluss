@@ -5,8 +5,6 @@ import {
   Calendar, 
   Clock, 
   Tag, 
-  MessageCircle, 
-  Heart, 
   Share2,
   Facebook,
   Twitter,
@@ -21,12 +19,13 @@ import { toast } from "react-hot-toast";
 import { User } from "@/types/auth";
 import { blogService } from "@/services/blogService";
 import type { BlogPost } from "@/types/blog";
+import FeedbackSection from "@/components/FeedbackSection";
+import { feedbackService } from "@/services/feedbackService";
+import StaticBackground from "@/components/StaticBackground";
 
 // Lazy load components
-const AnimatedBackground = lazy(() => import("@/components/AnimatedBackground"));
 const SocialShare = lazy(() => import("@/components/SocialShare"));
 const Footer = lazy(() => import("@/components/Footer"));
-const BlogComments = lazy(() => import("@/components/BlogComments"));
 
 const BlogPostPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -34,19 +33,15 @@ const BlogPostPage = () => {
   const [post, setPost] = useState<BlogPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [likes, setLikes] = useState(0);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
         setIsLoading(true);
         const postData = await blogService.getPost(slug || '') as BlogPost;
+        console.log('Fetched post data:', postData); // Debug log
         if (postData) {
           setPost(postData);
-          setLikes(postData.likes || 0);
-          setIsLiked(postData.is_liked || false);
         }
       } catch (err) {
         setError('Failed to load blog post');
@@ -59,77 +54,67 @@ const BlogPostPage = () => {
     if (slug) {
       fetchPost();
     }
+    
+    // Test function to check if feedback service is working
+    const testFeedbackService = async () => {
+      try {
+        console.log('Testing feedback service connection...');
+        console.log('API URL:', import.meta.env.VITE_API_URL);
+        
+        // Simple health check
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/health/`);
+        console.log('Health check response:', response.status);
+        
+        // Test feedback submission
+        const testFeedback = {
+          post_id: post?.id || 1,
+          content: 'Test feedback submission',
+          rating: 5,
+          type: 'general' as const,
+          title: 'Test Feedback',
+          description: 'This is a test feedback submission',
+          createdAt: new Date().toISOString()
+        };
+        
+        console.log('Submitting test feedback:', testFeedback);
+        const result = await feedbackService.submitFeedback(testFeedback);
+        console.log('Feedback submission result:', result);
+        
+        toast.success('Feedback service is working correctly!');
+      } catch (error) {
+        console.error('Feedback service test failed:', error);
+        toast.error('Feedback service test failed. Check console for details.');
+      }
+    };
+    
+    // Uncomment the line below to test the feedback service connection
+    // testFeedbackService();
   }, [slug]);
 
-  const handleLike = async () => {
-    if (!user) {
-      toast.error('Please login to like posts');
-      return;
-    }
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      if (!post) return;
-      const response = await blogService.likePost(post.id);
-      setLikes(response.likes);
-      setIsLiked(response.is_liked);
-      toast.success('Post liked successfully');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to like post');
-      console.error('Error liking post:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Helper function to render content section
+  const renderContentSection = (content: string | undefined, className: string = '') => {
+    if (!content) return null;
+    return (
+      <div 
+        className={`prose prose-lg prose-invert max-w-none ${className} prose-headings:text-white prose-p:text-white/90 prose-strong:text-white prose-a:text-caluu-blue hover:prose-a:text-caluu-blue-light prose-img:rounded-xl prose-pre:bg-white/10 prose-code:text-white/90 prose-code:bg-white/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded`}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
   };
 
-  const handleUnlike = async () => {
-    if (!user) {
-      toast.error('Please login to unlike posts');
-      return;
-    }
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      if (!post) return;
-      const response = await blogService.unlikePost(post.id);
-      setLikes(response.likes);
-      setIsLiked(response.is_liked);
-      toast.success('Post unliked successfully');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to unlike post');
-      console.error('Error unliking post:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddComment = async (content: string) => {
-    if (!user) {
-      toast.error('Please login to comment');
-      return;
-    }
-
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      if (!post) return;
-      const newComment = await blogService.addComment(post.id, content);
-      setPost(prev => prev ? {
-        ...prev,
-        comments: [...prev.comments, newComment]
-      } : null);
-      toast.success('Comment added successfully');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to add comment');
-      console.error('Error adding comment:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Helper function to render section with title
+  const renderSection = (title: string | undefined, content: string | undefined) => {
+    if (!content) return null;
+    return (
+      <div className="mb-12">
+        {title && (
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            {title}
+          </h2>
+        )}
+        {renderContentSection(content)}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -152,166 +137,117 @@ const BlogPostPage = () => {
   }
 
   return (
-    <LazyMotion features={domAnimation}>
-      <SEO
-        title={post.title}
-        description="Learn how to calculate your GPA at UDSM"
-        image="/images/blog/gpa-guide.jpg"
+    <div className="min-h-screen bg-caluu-blue-dark">
+      <SEO 
+        title={post?.title || "Blog Post | Academic Journey Simplified"}
+        description={post?.excerpt || "Read our detailed article about academic success and GPA calculation."}
       />
-      <div className="min-h-screen bg-gradient-to-b from-caluu-blue-dark to-caluu-blue-light">
-        {/* Hero Section */}
-        <div className="relative h-[50vh] sm:h-[60vh] min-h-[400px] sm:min-h-[500px] flex items-center justify-center overflow-hidden">
-          <Suspense fallback={<div className="animate-pulse bg-caluu-blue-dark/50 w-full h-full" />}>
-          <AnimatedBackground />
-          </Suspense>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent" />
-          
-          <LazyMotion features={domAnimation}>
-          <motion.div 
-            className="relative text-center px-4 z-10 max-w-4xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+      <StaticBackground />
+      
+      <div className="max-w-[1200px] mx-auto">
+        {/* Back to Blog Button */}
+        <div className="px-4 py-6">
             <Link
               to="/blog"
-              className="inline-flex items-center text-white/80 hover:text-white mb-6 sm:mb-8 transition-colors"
+            className="inline-flex items-center text-white/80 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Blog
             </Link>
-
-            <div className="flex flex-wrap items-center justify-center gap-4 text-white/80 mb-4 sm:mb-6">
+        </div>
+        
+        <article className="bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10">
+          {/* Title Section */}
+          <header className="px-6 py-8 md:px-8 md:py-12 text-center">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
+              {post.title}
+            </h1>
+            
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-sm text-white/80 mb-6">
               <span className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1" />
+                <Calendar className="w-4 h-4 mr-2" />
                   {new Date(post.created_at).toLocaleDateString()}
               </span>
               <span className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
-                  5 min read
+                <Clock className="w-4 h-4 mr-2" />
+                {post.readTime || '5 min read'}
               </span>
+              {post.category && (
+                <span className="flex items-center">
+                  <Tag className="w-4 h-4 mr-2" />
+                  {post.category}
+                </span>
+              )}
             </div>
             
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight">
-                {post.title}
-            </h1>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-              <span className="bg-caluu-blue text-white px-3 py-1 rounded-full text-sm">
-                  GPA Calculation
-              </span>
-                {post.tags?.map((tag: string) => (
+            {post.tags && post.tags.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {post.tags.map((tag, index) => (
                 <span
-                  key={tag}
-                  className="flex items-center text-sm text-white/80 bg-white/10 px-3 py-1 rounded-full"
+                    key={index}
+                    className="px-3 py-1 bg-white/10 text-white/90 rounded-full text-sm"
                 >
-                  <Tag className="w-3 h-3 mr-1" />
                   {tag}
                 </span>
               ))}
             </div>
-          </motion.div>
-          </LazyMotion>
-        </div>
+            )}
+          </header>
 
-        <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
-          {/* Featured Image with loading optimization */}
-          <LazyMotion features={domAnimation}>
-          <motion.div 
-            className="relative h-[300px] sm:h-[400px] rounded-xl overflow-hidden mb-8 sm:mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <img
-                src={post.image || "/blog/gpa-guide.jpg"}
+          {/* Featured Image */}
+          {post.image && (
+            <div className="w-full mb-8">
+              <img 
+                src={post.image} 
                 alt={post.title}
-              className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          </motion.div>
-          </LazyMotion>
-
-          {/* Content with optimized rendering */}
-          <LazyMotion features={domAnimation}>
-          <motion.article 
-            className="prose prose-lg prose-invert max-w-none mb-8 sm:mb-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-              dangerouslySetInnerHTML={{ __html: post.content }}
-          />
-          </LazyMotion>
-
-          {/* Social Interaction */}
-          <Suspense fallback={<div className="h-16 animate-pulse bg-white/5 rounded-lg" />}>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={isLiked ? handleUnlike : handleLike}
-                  disabled={isSubmitting || !user}
-                  className={`flex items-center gap-2 transition-colors ${
-                    isLiked ? 'text-red-500' : 'text-white/80 hover:text-white'
-                  } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''} ${
-                    !user ? 'cursor-not-allowed opacity-50' : ''
-                  }`}
-                  title={!user ? 'Please login to like posts' : ''}
-                >
-                  <Heart className={`w-5 h-5 ${isSubmitting ? 'animate-pulse' : ''}`} />
-                  <span>{likes}</span>
-                </button>
-                <div className="flex items-center gap-2 text-white/80">
-                  <MessageCircle className="w-5 h-5" />
-                  <span>{post.comments?.length || 0}</span>
+                className="w-full h-[50vh] object-cover"
+              />
                 </div>
-              </div>
+          )}
+
+          {/* Content */}
+          <div className="px-6 md:px-8 lg:px-12 pb-12">
+            {/* Introduction */}
+            {post.intro && renderContentSection(post.intro, 'mb-12')}
+
+            {/* Section One */}
+            {renderSection(post.section_one_title, post.section_one_content)}
+
+            {/* Section Two */}
+            {renderSection(post.section_two_title, post.section_two_content)}
+
+            {/* Conclusion */}
+            {post.conclusion && renderContentSection(post.conclusion, 'mb-12')}
+
+            {/* Legacy Content (fallback) */}
+            {!post.intro && !post.section_one_content && !post.section_two_content && post.content && (
+              renderContentSection(post.content, 'mb-12')
+            )}
+
+            {/* Social Share */}
+            <div className="border-t border-white/10 pt-8 mb-12">
+              <Suspense fallback={<div className="h-10"></div>}>
             <SocialShare
                 title={post.title}
-                description="Learn how to calculate your GPA at UDSM"
-                image={post.image || "/blog/gpa-guide.jpg"}
                 url={window.location.href}
+                  description={post.excerpt || ''}
+                  image={post.image || '/blog/gpa-guide.jpg'}
               />
+              </Suspense>
             </div>
-          </Suspense>
 
-          {/* Comments Section */}
-            <Suspense fallback={<div className="h-32 animate-pulse bg-white/5 rounded-lg mt-8" />}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-8"
-              >
-              <BlogComments
-                postId={post.id}
-                initialComments={post.comments || []}
-                onAddComment={handleAddComment}
-                isAuthenticated={!!user}
-              />
-              </motion.div>
-            </Suspense>
-
-          <motion.div 
-          className="flex justify-center mb-8"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Link 
-            to="/"
-            className="bg-caluu-blue hover:bg-caluu-blue/90 text-white px-8 py-3 rounded-full font-semibold flex items-center gap-2 transition-colors"
-          >
-            <Calculator className="w-5 h-5" />
-            GO GPA Calculator
-          </Link>
-          </motion.div>
+            {/* Feedback Section */}
+            <div className="mb-8">
+              <FeedbackSection postId={post.id} />
+            </div>
+          </div>
+        </article>
         </div>
 
-        <Suspense fallback={<div className="h-32 animate-pulse bg-white/5" />}>
+      <Suspense fallback={<div className="h-20"></div>}>
         <Footer />
         </Suspense>
       </div>
-    </LazyMotion>
   );
 };
 
