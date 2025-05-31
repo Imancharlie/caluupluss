@@ -6,9 +6,11 @@ import { toast } from 'react-hot-toast';
 
 interface FeedbackSectionProps {
   postId?: string;
+  programId?: string;
+  academicYear?: string;
 }
 
-const FeedbackSection = ({ postId }: FeedbackSectionProps) => {
+const FeedbackSection = ({ postId, programId, academicYear }: FeedbackSectionProps) => {
   const [feedbackType, setFeedbackType] = useState<'general' | 'bug' | 'help'>('general');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,11 +40,14 @@ const FeedbackSection = ({ postId }: FeedbackSectionProps) => {
     setSubmitStatus('idle');
 
     try {
+      // Modified to match backend expected format
       const feedbackData = {
-        type: feedbackType,
+        program_id: programId || postId, // Use programId if available, fallback to postId
+        academic_year: academicYear,     // Changed from academic_year_id
+        issue: feedbackType,             // Changed from type to issue
+        description: description.trim(), // Keep as description
+        // Keeping additional fields that might be useful
         title: title.trim(),
-        description: description.trim(),
-        postId,
         createdAt: new Date().toISOString(),
       };
       
@@ -190,4 +195,4 @@ const FeedbackSection = ({ postId }: FeedbackSectionProps) => {
   );
 };
 
-export default FeedbackSection; 
+export default FeedbackSection;

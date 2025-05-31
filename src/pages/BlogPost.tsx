@@ -19,9 +19,9 @@ import { toast } from "react-hot-toast";
 import { User } from "@/types/auth";
 import { blogService } from "@/services/blogService";
 import type { BlogPost } from "@/types/blog";
-import FeedbackSection from "@/components/FeedbackSection";
-import { feedbackService } from "@/services/feedbackService";
-import StaticBackground from "@/components/StaticBackground";
+// import FeedbackSection from "@/components/FeedbackSection";
+// import { feedbackService } from "@/services/feedbackService";
+// import StaticBackground from "@/components/StaticBackground";
 
 // Lazy load components
 const SocialShare = lazy(() => import("@/components/SocialShare"));

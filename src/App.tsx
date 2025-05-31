@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { HelmetProvider } from "react-helmet-async";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SplashScreen from "./pages/SplashScreen";
+import EmailVerificationPage from "./pages/activate_page"
 import SelectionPage from "./pages/SelectionPage";
 import ElectiveSelection from "./pages/ElectiveSelection";
 import GpaCalculator from "./pages/GpaCalculator";
@@ -42,7 +43,7 @@ function AppRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
-
+        <Route path="/activate" element={<EmailVerificationPage />} />
         {/* Protected Routes */}
         <Route
           path="/selection"

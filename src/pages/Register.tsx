@@ -108,7 +108,7 @@ const Register = () => {
       
       // Show success message and navigate
       toast.success("Account created successfully! Welcome to CALUU.");
-      navigate("/selection");
+      navigate("/activate");
     } catch (error) {
       console.error("Registration error:", error);
       

@@ -483,12 +483,7 @@ const SelectionPage = () => {
               >
                 Visit us
               </button>
-              <button 
-                onClick={() => window.open('/blog', '_blank')}
-                className="text-white hover:underline"
-              >
-                Blog
-              </button>
+            
             </p>
           </motion.div>
 
