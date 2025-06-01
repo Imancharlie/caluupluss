@@ -214,7 +214,7 @@ const SelectionPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!programId || !academicYearId || !semester) {
       toast({
         title: "Missing Information",
@@ -234,8 +234,6 @@ const SelectionPage = () => {
       };
 
       const electiveUrl = `${API_BASE_URL}/select-electives/?${new URLSearchParams(electiveParams).toString()}`;
-      console.log('Checking elective courses at:', electiveUrl);
-
       const electiveResponse = await axios.get(electiveUrl);
       const hasElectives = electiveResponse.data && electiveResponse.data.length > 0;
 
@@ -260,6 +258,10 @@ const SelectionPage = () => {
         return;
       }
 
+      // Check for locally saved courses in localStorage
+      const localKey = `courseEdits_${programId}_${academicYearId}_${semester}`;
+      const localCourses = localStorage.getItem(localKey);
+
       // Save selection to session storage
       const selection = {
         programId: programId,
@@ -270,10 +272,16 @@ const SelectionPage = () => {
         containsElectives: hasElectives,
         coursesConfirmed: coursesConfirmed
       };
-      
-      console.log('Saving selection:', selection);
+
       sessionStorage.setItem("selection", JSON.stringify(selection));
-      
+
+      if (localCourses) {
+        // If local courses exist, skip electives and go to GPA calculator
+        sessionStorage.setItem("selectedElectives", JSON.stringify([]));
+        navigate("/calculator");
+        return;
+      }
+
       if (hasElectives) {
         navigate("/elective-selection");
       } else {
