@@ -168,65 +168,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
+const signUp = async (email: string, password: string, name: string) => {
+  try {
+    const response = await api.post('/api/auth/register/', {
+      email,
+      password,
+      name
+    });
 
-  const signUp = async (email: string, password: string, name: string) => {
-    try {
-      const response = await api.post('/api/auth/register/', {
-        email,
-        password,
-        name
-      });
-      
-      // Try to sign in immediately after registration
-      try {
-        await signInWithEmail(email, password);
-        
-        // Create a user object from the registration data
-        const user = {
-          id: response.data?.id || 0,
-          username: email,
-          email: email,
-          first_name: name.split(' ')[0] || '',
-          last_name: name.split(' ').slice(1).join(' ') || '',
-          is_staff: false
-        };
+    // Just return a user-like object (not logged in)
+    const user = {
+      id: response.data?.id || 0,
+      username: email,
+      email: email,
+      first_name: name.split(' ')[0] || '',
+      last_name: name.split(' ').slice(1).join(' ') || '',
+      is_staff: false
+    };
 
-        return user;
-      } catch (signInError) {
-        console.error("Error during post-registration sign in:", signInError);
-        throw new Error("Registration successful but automatic sign in failed. Please try signing in manually.");
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      const axiosError = error as AxiosError<ApiError>;
-      
-      if (axiosError.code === 'ERR_NETWORK') {
-        throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
-      }
+    return user;
+  } catch (error) {
+    console.error("Registration error:", error);
+    const axiosError = error as AxiosError<ApiError>;
 
-      // Handle specific backend error messages
-      if (axiosError.response?.data?.error) {
-        const errorMessage = axiosError.response.data.error;
-        
-        // Map specific error messages
-        if (errorMessage.includes("already exists")) {
-          throw new Error("This email is already registered. Please use a different email or sign in.");
-        } else if (errorMessage.includes("invalid")) {
-          throw new Error("Invalid registration data. Please check your information and try again.");
-        } else if (errorMessage.includes("password")) {
-          throw new Error("Invalid password format. Please ensure it meets the requirements.");
-        } else if (errorMessage.includes("email")) {
-          throw new Error("Invalid email format. Please enter a valid email address.");
-        } else if (errorMessage.includes("IntegrityError")) {
-          throw new Error("This email is already registered. Please use a different email or sign in.");
-        } else {
-          throw new Error(errorMessage);
-        }
-      }
-      
-      throw new Error('Failed to register. Please try again later.');
+    if (axiosError.code === 'ERR_NETWORK') {
+      throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
     }
-  };
+
+    if (axiosError.response?.data?.error) {
+      const errorMessage = axiosError.response.data.error;
+
+      if (errorMessage.includes("already exists")) {
+        throw new Error("This email is already registered. Please use a different email or sign in.");
+      } else if (errorMessage.includes("invalid")) {
+        throw new Error("Invalid registration data. Please check your information and try again.");
+      } else if (errorMessage.includes("password")) {
+        throw new Error("Invalid password format. Please ensure it meets the requirements.");
+      } else if (errorMessage.includes("email")) {
+        throw new Error("Invalid email format. Please enter a valid email address.");
+      } else if (errorMessage.includes("IntegrityError")) {
+        throw new Error("This email is already registered. Please use a different email or sign in.");
+      } else {
+        throw new Error(errorMessage);
+      }
+    }
+
+    throw new Error('Failed to register. Please try again later.');
+  }
+};
+
 
   const signOut = async () => {
     try {
