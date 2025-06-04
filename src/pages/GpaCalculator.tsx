@@ -454,7 +454,28 @@ const GpaCalculator = () => {
     }
   };
 
-  return (
+    return (
+  <>
+    <style>{`
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      .animate-shimmer {
+        animation: shimmer 3s infinite;
+      }
+      @keyframes glow-pulse {
+        0%, 100% { 
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+        }
+        50% { 
+          box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.5), 0 0 50px rgba(59, 130, 246, 0.3);
+        }
+      }
+      .glow-button {
+        animation: glow-pulse 2s infinite;
+      }
+    `}</style>
     <div className="min-h-screen bg-caluu-blue-dark pb-12">
       <div className="container-app py-4 sm:py-8">
         {selection && courses.length > 0 && (
@@ -530,12 +551,13 @@ const GpaCalculator = () => {
                     Enter Your Grades
                   </h2>
                   <button
-                    onClick={() => setShowEditModal(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-caluu-blue hover:text-caluu-blue-dark hover:bg-gray-50 rounded-md transition-colors duration-200 border border-gray-200 hover:border-caluu-blue"
-                  >
-                    <Edit size={16} />
-                    <span>Edit Courses</span>
-                  </button>
+  onClick={() => setShowEditModal(true)}
+  className="glow-button relative flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-caluu-blue to-blue-600 hover:from-blue-600 hover:to-caluu-blue rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl hover:animate-none border-2 border-transparent hover:border-white/20"
+>
+  <Edit size={16} className="drop-shadow-sm" />
+  <span className="drop-shadow-sm">Edit Courses</span>
+  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg animate-shimmer"></div>
+</button>
                 </div>
               </motion.div>
 
@@ -738,7 +760,8 @@ const GpaCalculator = () => {
         </p>
       </motion.div>
     </div>
-  );
+    </>  // Add the closing fragment here
+   );
 };
 
 export default GpaCalculator;
