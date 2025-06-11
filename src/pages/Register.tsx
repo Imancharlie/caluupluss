@@ -21,8 +21,13 @@ const Register = () => {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard"); // or wherever you want to redirect logged-in users
+    }
+  }, [user, navigate]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,12 +68,20 @@ const Register = () => {
 
     try {
       await signUp(email, password, name);
-      toast.success("Account created successfully!");
-      setRegistrationSuccess(true); // ✅ Show success card
+      
+      // Show success message
+      toast.success("Account created successfully! Please login to continue.", {
+        duration: 4000,
+      });
+      
+      // Navigate to login page after successful registration
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500); // Small delay to let user see the success message
+      
     } catch (error) {
       const errorMessage = (error as Error).message;
       toast.error(errorMessage);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -117,111 +130,100 @@ const Register = () => {
             </motion.p>
           </div>
 
-          {registrationSuccess ? (
-            <motion.div
-              className="bg-white p-6 rounded-2xl shadow-xl text-center"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h2 className="text-xl font-bold text-caluu-blue mb-2">Account Created!</h2>
-              <p className="text-gray-700">
-                Please check your email to activate your account before logging in.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              className="bg-white rounded-2xl shadow-xl overflow-hidden"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-            >
-              <form onSubmit={handleSubmit} className="p-6">
-                <div className="mb-4">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
-                    placeholder="Enter your full name"
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
-                    placeholder="Enter your email"
-                    disabled={isLoading}
-                    required
-                  />
-                </div>
-
-                <div className="mb-6">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none pr-10"
-                      placeholder="Enter your password"
-                      disabled={isLoading}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
+          <motion.div
+            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+          >
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="mb-4">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
+                  placeholder="Enter your full name"
                   disabled={isLoading}
-                  className={`w-full py-3 px-4 bg-caluu-blue text-white font-medium rounded-lg shadow-md transition-all duration-300 ${
-                    isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-caluu-blue-light hover:shadow-lg"
-                  }`}
-                >
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </button>
-              </form>
-            </motion.div>
-          )}
+                  required
+                />
+              </div>
 
-          {!registrationSuccess && (
-            <motion.div
-              className="mt-4 text-center text-white/60 text-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.8 }}
-            >
-              <p>
-                Already have an account?{" "}
-                <button onClick={() => navigate("/login")} className="text-white hover:underline">
-                  Login
-                </button>
-              </p>
-            </motion.div>
-          )}
+              <div className="mb-4">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
+                  placeholder="Enter your email"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              <div className="mb-6">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none pr-10"
+                    placeholder="Enter your password"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full py-3 px-4 bg-caluu-blue text-white font-medium rounded-lg shadow-md transition-all duration-300 ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-caluu-blue-light hover:shadow-lg"
+                }`}
+              >
+                {isLoading ? "Creating account..." : "Create Account"}
+              </button>
+            </form>
+          </motion.div>
+
+          <motion.div
+            className="mt-4 text-center text-white/60 text-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
+            <p>
+              Already have an account?{" "}
+              <button 
+                onClick={() => navigate("/login")} 
+                className="text-white hover:underline"
+                disabled={isLoading}
+              >
+                Login
+              </button>
+            </p>
+          </motion.div>
         </motion.div>
       </div>
     </div>
