@@ -13,6 +13,33 @@ const api = axios.create({
   withCredentials: true // This is important for CORS
 });
 
+// Add request interceptor to handle token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Token ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle 401/403 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 interface User {
   id: number;
   username: string;
@@ -29,6 +56,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<User>;
   signOut: () => void;
   checkAuth: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 interface ApiError {
@@ -51,9 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (token && savedUser) {
         try {
-          // Set the token in axios instance
-          api.defaults.headers.common['Authorization'] = `Token ${token}`;
-          
           // Try to validate the token
           const response = await api.get('/api/auth/check/');
           
@@ -94,31 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Set the token in axios instance
-      api.defaults.headers.common['Authorization'] = `Token ${token}`;
-      
-      // Validate token with backend
-      try {
+      // The token will be automatically added by the interceptor
         const response = await api.get('/api/auth/check/');
         
-        if (response.data && response.data.user) {
-          setUser(response.data.user);
-          // Update stored user data if needed
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-      } catch (error) {
-        console.error("Token validation failed:", error);
-        // Only clear auth if it's a 401 error
-        if ((error as AxiosError).response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setUser(null);
-        }
+      if (response.data) {
+        const userData = {
+          id: response.data.id,
+          username: response.data.email,
+          email: response.data.email,
+          first_name: response.data.name.split(' ')[0] || '',
+          last_name: response.data.name.split(' ').slice(1).join(' ') || '',
+          is_staff: response.data.isAdmin
+        };
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      // Only clear auth if it's a 401 error
-      if ((error as AxiosError).response?.status === 401) {
+      if ((error as AxiosError).response?.status === 401 || (error as AxiosError).response?.status === 403) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
@@ -149,9 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       
-      // Set the token in axios instance
-      api.defaults.headers.common['Authorization'] = `Token ${token}`;
-      
       setUser(userData);
       toast.success('Successfully signed in!');
     } catch (error) {
@@ -168,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
+
 const signUp = async (email: string, password: string, name: string) => {
   try {
     const response = await api.post('/api/auth/register/', {
@@ -217,7 +235,6 @@ const signUp = async (email: string, password: string, name: string) => {
   }
 };
 
-
   const signOut = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -247,8 +264,58 @@ const signUp = async (email: string, password: string, name: string) => {
     }
   };
 
+  const requestPasswordReset = async (email: string) => {
+    try {
+      await api.post('/api/auth/password-reset/', {
+        email
+      });
+      toast.success('Password reset instructions have been sent to your email');
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      const axiosError = error as AxiosError<ApiError>;
+      
+      if (axiosError.code === 'ERR_NETWORK') {
+        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+      } else {
+        const errorMessage = axiosError.response?.data?.error || 'Failed to request password reset';
+        toast.error(errorMessage);
+      }
+      throw error;
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    try {
+      await api.post('/api/auth/password-reset/confirm/', {
+        token,
+        password: newPassword
+      });
+      toast.success('Password has been reset successfully');
+    } catch (error) {
+      console.error("Password reset error:", error);
+      const axiosError = error as AxiosError<ApiError>;
+      
+      if (axiosError.code === 'ERR_NETWORK') {
+        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+      } else {
+        const errorMessage = axiosError.response?.data?.error || 'Failed to reset password';
+        toast.error(errorMessage);
+      }
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, signUp, signOut, checkAuth }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signInWithEmail, 
+      signUp, 
+      signOut, 
+      checkAuth,
+      requestPasswordReset,
+      resetPassword
+    }}>
       {children}
     </AuthContext.Provider>
   );

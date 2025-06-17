@@ -154,6 +154,15 @@ const Login = () => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/forgot-password")}
+                      className="text-sm text-caluu-blue hover:text-caluu-blue-light transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 </div>
                 
                 <button

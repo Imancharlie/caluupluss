@@ -16,9 +16,12 @@ import AdminUpload from "./pages/AdminUpload";
 import AdminLogin from "./pages/AdminLogin";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./components/ForgotPassword";
 import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import AdminPanel from "./pages/AdminPanel";
+import SendEmail from "./pages/SendEmail";
 import './styles/globals.css';
 
 // Create QueryClient instance
@@ -41,6 +44,7 @@ function AppRoutes() {
         <Route path="/" element={<SplashScreen />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/activate" element={<EmailVerificationPage />} />
@@ -77,6 +81,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute requireAdmin>
               <AdminUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/send-email"
+          element={
+            <ProtectedRoute requireAdmin>
+              <SendEmail />
             </ProtectedRoute>
           }
         />

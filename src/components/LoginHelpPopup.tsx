@@ -52,7 +52,7 @@ const LoginHelpPopup = ({ isVisible, onClose }: LoginHelpPopupProps) => {
                   </Link>
 
                   <Link
-                    to="#"
+                    to="/forgot-password"
                     className="flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-colors group"
                   >
                     <Key className="w-5 h-5 text-caluu-blue group-hover:scale-110 transition-transform" />

@@ -96,6 +96,39 @@ const SelectionPage = () => {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("");
 
+  // Secret admin access state
+  const [clickCount, setClickCount] = useState(0);
+  const [lastClickTime, setLastClickTime] = useState(0);
+
+  // Handle secret admin access
+  const handleSecretClick = () => {
+    const currentTime = Date.now();
+    
+    // Reset if more than 3 seconds have passed
+    if (currentTime - lastClickTime > 3000) {
+      setClickCount(1);
+      setLastClickTime(currentTime);
+      return;
+    }
+    
+    // Increment click count
+    const newClickCount = clickCount + 1;
+    setClickCount(newClickCount);
+    setLastClickTime(currentTime);
+    
+    // Check if 4 clicks reached
+    if (newClickCount >= 4) {
+      console.log('Secret admin access activated!');
+      toast({
+        title: "Admin Access",
+        description: "Welcome to the admin panel!",
+        variant: "default"
+      });
+      navigate('/admin');
+      setClickCount(0); // Reset for next time
+    }
+  };
+
   useEffect(() => {
     const fetchColleges = async () => {
       setIsLoading(true);
@@ -320,7 +353,10 @@ const SelectionPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-caluu-blue-dark p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center bg-caluu-blue-dark p-4"
+      onClick={handleSecretClick} // Add click handler to the main container
+    >
       <motion.div 
         className="w-full max-w-lg"
         initial={{ opacity: 0, y: 20 }}
