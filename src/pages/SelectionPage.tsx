@@ -102,6 +102,19 @@ const SelectionPage = () => {
 
   // Handle secret admin access
   const handleSecretClick = () => {
+    // Check if user is admin first
+    const user = localStorage.getItem('user');
+    if (!user) return; // No user logged in, do nothing
+    
+    try {
+      const userData = JSON.parse(user);
+      if (!userData.isAdmin && !userData.is_staff) {
+        return; // User is not admin, do nothing silently
+      }
+    } catch (error) {
+      return; // Invalid user data, do nothing
+    }
+    
     const currentTime = Date.now();
     
     // Reset if more than 3 seconds have passed
