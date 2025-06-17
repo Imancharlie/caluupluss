@@ -488,7 +488,7 @@ def api_login(request):
 
     if not username or not password:
         return Response(
-            {'error': 'Please provide both username and password'},
+            {'error': 'Please provide both username and password'}, 
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -507,9 +507,9 @@ def api_login(request):
                 'is_staff': user.is_staff
             }
         })
-
+    
     return Response(
-        {'error': 'Invalid credentials'},
+        {'error': 'Invalid credentials'}, 
         status=status.HTTP_401_UNAUTHORIZED
     )
 
@@ -523,8 +523,8 @@ from django.contrib.sites.shortcuts import get_current_site
 @permission_classes([AllowAny])
 def api_register(request):
     try:
-        email = request.data.get('email')
-        password = request.data.get('password')
+    email = request.data.get('email')
+    password = request.data.get('password')
         name = request.data.get('name', '').split()
 
         if not email or not password:
@@ -534,13 +534,13 @@ def api_register(request):
         last_name = ' '.join(name[1:]) if len(name) > 1 else ''
 
         try:
-            user = User.objects.create_user(
+        user = User.objects.create_user(
                 username=email,
-                email=email,
-                password=password,
-                first_name=first_name,
-                last_name=last_name
-            )
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name
+        )
 
             login(request, user)
 
@@ -616,10 +616,10 @@ def add_program(request):
                 status=status.HTTP_201_CREATED
             )
         else:
-            return Response(
+        return Response(
                 serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            status=status.HTTP_400_BAD_REQUEST
+        )
     except Exception as e:
         return Response(
             {'error': f'An error occurred: {str(e)}'},

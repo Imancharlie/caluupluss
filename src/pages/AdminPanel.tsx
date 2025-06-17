@@ -24,10 +24,14 @@ interface StatCardProps {
   trend?: 'up' | 'down';
   trendValue?: string;
   className?: string;
+  onClick?: () => void;
 }
 
-const StatCard = ({ title, count, icon: Icon, trend, trendValue, className }: StatCardProps) => (
-  <div className={`bg-white/10 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-white/20 ${className || ''}`}>
+const StatCard = ({ title, count, icon: Icon, trend, trendValue, className, onClick }: StatCardProps) => (
+  <div 
+    className={`bg-white/10 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-white/20 ${className || ''} ${onClick ? 'cursor-pointer hover:bg-white/20 transition-all duration-300' : ''}`}
+    onClick={onClick}
+  >
     <div className="flex items-center justify-between">
       <div className="flex-1">
         <p className="text-white/70 text-xs md:text-sm">{title}</p>
@@ -261,6 +265,7 @@ const AdminPanel = () => {
             title="Feedback" 
             count={dashboardData.counts.feedback_count} 
             icon={MessageSquare}
+            onClick={() => window.open('https://caluu.pythonanywhere.com/dashboard_feedback//', '_blank')}
           />
           <StatCard 
             title="Confirmed Years" 
