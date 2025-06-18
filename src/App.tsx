@@ -101,7 +101,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/exam-preparation" element={<ExamPreparation />} />
+        <Route path="/udsm-timetable" element={<ExamPreparation />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />

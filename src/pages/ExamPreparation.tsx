@@ -42,7 +42,7 @@ const ExamPreparation = () => {
   const [userCount, setUserCount] = useState(0);
 
   // Sharing message template
-  const shareMessage = `Hello friend! Official UDSM UE timetable for semester 2 2024-2025 is out exams will start 2 July 2025. I hope you have it already and you have checked if there is no collisions of exams if not yet, download it through ${window.location.origin}/exam-preparation Caluu is an academic best friend tool for us UDSM students it also helps with GPA planning, tracking and supervision. Your Academics needs you and your friends needs you more kindly share with your friends to show real love and care to their future #NomoreAris3suprises`;
+  const shareMessage = `Hello friend! Official UDSM UE timetable for semester 2 2024-2025 is out exams will start 2 July 2025. I hope you have it already and you have checked if there is no collisions of exams if not yet, download it through ${window.location.origin}/udsm-timetable Caluu is an academic best friend tool for us UDSM students it also helps with GPA planning, tracking and supervision. Your Academics needs you and your friends needs you more kindly share with your friends to show real love and care to their future #NomoreAris3suprises`;
   const careMessage = "📚 Hey! I found this amazing tool with our UDSM timetable and GPA planning features. Since I care about your success too, I thought you should have access to it! 💪📚";
 
   // Fetch user count
