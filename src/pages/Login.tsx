@@ -93,7 +93,7 @@ const Login = () => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.4 }}
               >
-                Welcome Back
+                Welcome to Caluu
               </motion.h1>
               
               <motion.p 

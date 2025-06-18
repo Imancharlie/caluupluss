@@ -22,6 +22,7 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import AdminPanel from "./pages/AdminPanel";
 import SendEmail from "./pages/SendEmail";
+import ExamPreparation from './pages/ExamPreparation';
 import './styles/globals.css';
 
 // Create QueryClient instance
@@ -100,6 +101,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/exam-preparation" element={<ExamPreparation />} />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
