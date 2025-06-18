@@ -420,35 +420,35 @@ const ExamPreparation = () => {
 
       {/* Care & Share Modal */}
       {showCareModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-8 max-w-xs sm:max-w-md w-full min-h-0 overflow-y-auto">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Share2 className="w-8 h-8 text-blue-600" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <Share2 className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
+              <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Share the Timetable! 📚
               </h3>
-              <p className="text-sm sm:text-base text-gray-600 mb-6">
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
                 Your friends need this official UDSM timetable too. Help them stay organized and prepared for exams by sharing this tool with them!
               </p>
               
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg mb-6 text-left border border-blue-200">
-                <p className="text-xs text-gray-500 mb-2">Share this message:</p>
-                <p className="text-sm text-gray-700 italic">
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-2 sm:p-4 rounded-lg mb-4 sm:mb-6 text-left border border-blue-200">
+                <p className="text-xs text-gray-500 mb-1 sm:mb-2">Share this message:</p>
+                <p className="text-xs sm:text-sm text-gray-700 italic break-words">
                   "{shareMessage}"
                 </p>
               </div>
               
-              <div className="space-y-3 mb-6">
+              <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
                 <button
                   onClick={() => {
                     handleShare('whatsapp');
                     setShowCareModal(false);
                   }}
-                  className="w-full bg-green-500 text-white px-4 py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-green-500 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   Share on WhatsApp
                 </button>
                 
@@ -457,9 +457,9 @@ const ExamPreparation = () => {
                     handleShare('copy');
                     setShowCareModal(false);
                   }}
-                  className="w-full bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-blue-500 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <Copy className="w-5 h-5" />
+                  <Copy className="w-4 h-4 sm:w-5 sm:h-5" />
                   Copy Message
                 </button>
 
@@ -468,16 +468,16 @@ const ExamPreparation = () => {
                     handleShare('sms');
                     setShowCareModal(false);
                   }}
-                  className="w-full bg-purple-500 text-white px-4 py-3 rounded-xl font-semibold hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-purple-500 text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl font-semibold hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                   Send SMS
                 </button>
               </div>
               
               <button
                 onClick={() => setShowCareModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-sm"
+                className="text-gray-500 hover:text-gray-700 text-xs sm:text-sm mt-2"
               >
                 Close
               </button>
