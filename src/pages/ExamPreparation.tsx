@@ -49,7 +49,7 @@ const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues
   useEffect(() => {
     const fetchUserCount = async () => {
       try {
-        const response = await fetch('https://caluu.pythonanywhere.com/api/admin/dashboard/');
+        const response = await fetch('https://timetable.udsm.ac.tz/');
         const data = await response.json();
         setUserCount(data.counts.user_count);
       } catch (error) {
