@@ -87,7 +87,7 @@ const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues
       // Simulate a small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      window.open('https://caluu.pythonanywhere.com/api/timetable/', '_blank');
+      window.open('https://timetable.udsm.ac.tz/', '_blank');
       toast.success('Timetable downloaded successfully!');
       
       // Show GPA prompt after 3 seconds
