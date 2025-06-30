@@ -535,11 +535,12 @@ const SelectionPage = () => {
           >
             <p>&copy; 2025 Kodin Softwares |{" "}
               <button 
-                onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
+                onClick={() => window.location.href = '/udsm-timetable'}
                 className="text-white hover:underline mr-2"
               >
-                Visit us
+                UE TIMETABLE
               </button>
+
             
             </p>
           </motion.div>
