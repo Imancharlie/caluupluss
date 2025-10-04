@@ -1,59 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useAppStore } from '@/store';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
-
-// Create axios instance with base URL and CORS settings
-const api = axios.create({
-  baseURL: 'https://caluu.pythonanywhere.com',
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  withCredentials: true // This is important for CORS
-});
-
-// Add request interceptor to handle token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Token ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Add response interceptor to handle 401/403 errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
+import academicApi from '@/services/academicApi';
 
 interface User {
-  id: number;
-  username: string;
+  id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  is_staff: boolean;
+  display_name: string;
+  gender?: string;
+  phone_number?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<User>;
+  signUp: (
+    email: string,
+    password: string,
+    password_confirm: string,
+    display_name: string,
+    gender?: string,
+    phone_number?: string
+  ) => Promise<{ id: string; email: string; display_name: string; gender?: string; phone_number?: string }>;
   signOut: () => void;
   checkAuth: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
@@ -71,6 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { setUser: setStoreUser } = useAppStore();
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -80,27 +51,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (token && savedUser) {
         try {
-          // Try to validate the token
-          const response = await api.get('/api/auth/check/');
+          // Try to validate the token by getting user profile
+          const profile = await academicApi.getStudentProfile();
           
-          if (response.data && response.data.user) {
-            setUser(response.data.user);
-            // Update stored user data if needed
-            localStorage.setItem('user', JSON.stringify(response.data.user));
-          } else {
-            // If no user data in response, use saved user
-            setUser(JSON.parse(savedUser));
+          if (profile) {
+            const userData = {
+              id: profile.id,
+              email: profile.university?.name || JSON.parse(savedUser).email,
+              display_name: profile.program?.name || JSON.parse(savedUser).display_name
+            };
+            setUser(userData);
+            setStoreUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
           }
-        } catch (error) {
-          console.error("Token validation failed:", error);
-          // Only clear auth if it's a 401 error
-          if ((error as AxiosError).response?.status === 401) {
+        } catch (error: any) {
+          // If profile doesn't exist (404), that's okay for new users
+          if (error.response?.status === 404) {
+            console.log("No student profile found - user needs to complete setup");
+            // Keep the user logged in but without profile data
+            const userData = JSON.parse(savedUser);
+            setUser(userData);
+            setStoreUser(userData);
+          } else {
+            // For other errors, clear auth data
+            console.error("Token validation failed:", error);
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
-          } else {
-            // For other errors, keep the saved user
-            setUser(JSON.parse(savedUser));
           }
         }
       }
@@ -110,145 +87,170 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const savedUser = localStorage.getItem('user');
       
       if (!token) {
         setUser(null);
         return;
       }
       
-      // The token will be automatically added by the interceptor
-        const response = await api.get('/api/auth/check/');
+      // Get user profile to validate token
+      const profile = await academicApi.getStudentProfile();
         
-      if (response.data) {
+      if (profile) {
         const userData = {
-          id: response.data.id,
-          username: response.data.email,
-          email: response.data.email,
-          first_name: response.data.name.split(' ')[0] || '',
-          last_name: response.data.name.split(' ').slice(1).join(' ') || '',
-          is_staff: response.data.isAdmin
+          id: profile.id,
+          email: profile.university?.name || 'User',
+          display_name: profile.program?.name || 'Student'
         };
         
         setUser(userData);
+        setStoreUser(userData as any);
         localStorage.setItem('user', JSON.stringify(userData));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth check failed:', error);
-      if ((error as AxiosError).response?.status === 401 || (error as AxiosError).response?.status === 403) {
+      // If profile doesn't exist (404), that's okay for new users
+      if (error.response?.status === 404) {
+        console.log("No student profile found - user needs to complete setup");
+        // Keep the user logged in but without profile data
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
       }
     }
-  };
+  }, []);
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
     try {
-      const response = await api.post('/api/auth/login/', {
-        username: email,
-        password,
-      });
+      console.log('[Auth] signInWithEmail payload', { email, passwordMasked: password ? '***' : '' });
+      const response = await academicApi.login(email, password);
       
-      const { token, user_id, username, is_staff } = response.data;
+      const { user, token } = response;
       
-      // Create a user object from the response data
-      const userData = {
-        id: user_id,
-        username: username,
-        email: username, // Django uses email as username
-        first_name: '', // These will be populated from the user profile endpoint
-        last_name: '',
-        is_staff: is_staff
-      };
-
       // Store auth data
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(user));
       
-      setUser(userData);
+      setUser(user);
+      setStoreUser(user as any);
+      setLoading(false);
       toast.success('Successfully signed in!');
     } catch (error) {
-      console.error("Login error:", error);
-      const axiosError = error as AxiosError<ApiError>;
-      
+      const axiosError = error as AxiosError<any>;
+      console.error('[Auth] Login error details', {
+        status: axiosError.response?.status,
+        data: axiosError.response?.data,
+        headers: axiosError.response?.headers,
+      });
       if (axiosError.code === 'ERR_NETWORK') {
-        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+        toast.error('Network error: Cannot connect to the server.');
       } else {
-        const errorMessage = axiosError.response?.data?.error || 'Failed to sign in';
-        toast.error(errorMessage);
+        const data = axiosError.response?.data as any;
+        const messages: string[] = [];
+        if (typeof data === 'string') messages.push(data);
+        if (data?.detail) messages.push(data.detail);
+        if (data?.error) messages.push(data.error);
+        if (Array.isArray(data?.non_field_errors)) messages.push(...data.non_field_errors);
+        if (data?.email) messages.push(`email: ${Array.isArray(data.email) ? data.email.join(', ') : String(data.email)}`);
+        if (data?.password) messages.push(`password: ${Array.isArray(data.password) ? data.password.join(', ') : String(data.password)}`);
+        toast.error(messages.filter(Boolean).join(' | ') || 'Failed to sign in');
       }
-      
       throw error;
     }
-  };
+  }, []);
 
-const signUp = async (email: string, password: string, name: string) => {
-  try {
-    const response = await api.post('/api/auth/register/', {
-      email,
-      password,
-      name
-    });
-
-    // Just return a user-like object (not logged in)
-    const user = {
-      id: response.data?.id || 0,
-      username: email,
-      email: email,
-      first_name: name.split(' ')[0] || '',
-      last_name: name.split(' ').slice(1).join(' ') || '',
-      is_staff: false
-    };
-
-    return user;
-  } catch (error) {
-    console.error("Registration error:", error);
-    const axiosError = error as AxiosError<ApiError>;
-
-    if (axiosError.code === 'ERR_NETWORK') {
-      throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
-    }
-
-    if (axiosError.response?.data?.error) {
-      const errorMessage = axiosError.response.data.error;
-
-      if (errorMessage.includes("already exists")) {
-        throw new Error("This email is already registered. Please use a different email or sign in.");
-      } else if (errorMessage.includes("invalid")) {
-        throw new Error("Invalid registration data. Please check your information and try again.");
-      } else if (errorMessage.includes("password")) {
-        throw new Error("Invalid password format. Please ensure it meets the requirements.");
-      } else if (errorMessage.includes("email")) {
-        throw new Error("Invalid email format. Please enter a valid email address.");
-      } else if (errorMessage.includes("IntegrityError")) {
-        throw new Error("This email is already registered. Please use a different email or sign in.");
-      } else {
-        throw new Error(errorMessage);
-      }
-    }
-
-    throw new Error('Failed to register. Please try again later.');
-  }
-};
-
-  const signOut = async () => {
+  const signUp = useCallback(async (email: string, password: string, password_confirm: string, display_name: string, gender?: string, phone_number?: string) => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await api.post('/api/auth/logout/', {}, {
-          headers: {
-            'Authorization': `Token ${token}`
-          }
-        });
+      const response = await academicApi.register(email, password, password_confirm, display_name, gender, phone_number);
+      // Backend returns { user, token }
+      const { user: newUser, token } = response;
+      if (token && newUser) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        setUser(newUser);
+        setStoreUser(newUser as any);
+        setLoading(false);
+        toast.success('Account created! You are now signed in.');
       }
+      return newUser;
+    } catch (error) {
+      console.error("Registration error:", error);
+      const axiosError = error as AxiosError<ApiError>;
+
+      if (axiosError.code === 'ERR_NETWORK') {
+        throw new Error('Network error: Cannot connect to the server. Please check your internet connection.');
+      }
+
+      // Handle 400 status specifically for email already exists
+      if (axiosError.response?.status === 400) {
+        const errorData = axiosError.response.data;
+        
+        // Check for email field specific errors (like the pattern you mentioned)
+        if (errorData?.email && Array.isArray(errorData.email)) {
+          const emailErrors = errorData.email;
+          if (emailErrors.some((error: string) => error.includes('already exists'))) {
+            throw new Error("This email is already registered. Please use a different email or sign in.");
+          }
+        }
+        
+        // Check for general error message
+        if (errorData?.error) {
+          const errorMessage = errorData.error;
+          
+          if (errorMessage.includes("already exists") || 
+              errorMessage.includes("A user with this email already exists") ||
+              errorMessage.includes("email already registered")) {
+            throw new Error("This email is already registered. Please use a different email or sign in.");
+          } else if (errorMessage.includes("Please provide email and password")) {
+            throw new Error("Please provide both email and password.");
+          } else if (errorMessage.includes("invalid")) {
+            throw new Error("Invalid registration data. Please check your information and try again.");
+          } else if (errorMessage.includes("password")) {
+            throw new Error("Invalid password format. Please ensure it meets the requirements.");
+          } else if (errorMessage.includes("email")) {
+            throw new Error("Invalid email format. Please enter a valid email address.");
+          } else {
+            throw new Error(errorMessage);
+          }
+        }
+      }
+
+      // Handle other error cases
+      if (axiosError.response?.data?.error) {
+        const errorMessage = axiosError.response.data.error;
+
+        if (errorMessage.includes("already exists")) {
+          throw new Error("This email is already registered. Please use a different email or sign in.");
+        } else if (errorMessage.includes("invalid")) {
+          throw new Error("Invalid registration data. Please check your information and try again.");
+        } else if (errorMessage.includes("password")) {
+          throw new Error("Invalid password format. Please ensure it meets the requirements.");
+        } else if (errorMessage.includes("email")) {
+          throw new Error("Invalid email format. Please enter a valid email address.");
+        } else if (errorMessage.includes("IntegrityError")) {
+          throw new Error("This email is already registered. Please use a different email or sign in.");
+        } else {
+          throw new Error(errorMessage);
+        }
+      }
+
+      throw new Error('Failed to register. Please try again later.');
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
       // Clear auth data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       toast.success('Successfully signed out!');
     } catch (error) {
@@ -259,17 +261,15 @@ const signUp = async (email: string, password: string, name: string) => {
       // Even if the server request fails, clear the local storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      delete api.defaults.headers.common['Authorization'];
       setUser(null);
     }
-  };
+  }, []);
 
-  const requestPasswordReset = async (email: string) => {
+  const requestPasswordReset = useCallback(async (email: string) => {
     try {
-      await api.post('/api/auth/password-reset/', {
-        email
-      });
-      toast.success('Password reset instructions have been sent to your email');
+      // Note: Password reset endpoints not implemented in your backend yet
+      // This is a placeholder for future implementation
+      toast.success('Password reset feature coming soon');
     } catch (error) {
       console.error("Password reset request error:", error);
       const axiosError = error as AxiosError<ApiError>;
@@ -282,15 +282,13 @@ const signUp = async (email: string, password: string, name: string) => {
       }
       throw error;
     }
-  };
+  }, []);
 
-  const resetPassword = async (token: string, newPassword: string) => {
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
     try {
-      await api.post('/api/auth/password-reset/confirm/', {
-        token,
-        password: newPassword
-      });
-      toast.success('Password has been reset successfully');
+      // Note: Password reset endpoints not implemented in your backend yet
+      // This is a placeholder for future implementation
+      toast.success('Password reset feature coming soon');
     } catch (error) {
       console.error("Password reset error:", error);
       const axiosError = error as AxiosError<ApiError>;
@@ -303,19 +301,21 @@ const signUp = async (email: string, password: string, name: string) => {
       }
       throw error;
     }
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    user,
+    loading,
+    signInWithEmail,
+    signUp,
+    signOut,
+    checkAuth,
+    requestPasswordReset,
+    resetPassword
+  }), [user, loading, signInWithEmail, signUp, signOut, checkAuth, requestPasswordReset, resetPassword]);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      signInWithEmail, 
-      signUp, 
-      signOut, 
-      checkAuth,
-      requestPasswordReset,
-      resetPassword
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

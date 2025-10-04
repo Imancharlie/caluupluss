@@ -24,9 +24,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-caluu-blue-dark flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="h-12 w-12 rounded-full bg-white/20"></div>
+      <div className="min-h-screen bg-gradient-to-br from-white to-gray-50 flex items-center justify-center">
+        <div className="relative w-10 h-10">
+          <div className="absolute inset-0 rounded-full border-2 border-caluu-blue border-t-transparent animate-spin" />
         </div>
       </div>
     );
@@ -38,9 +38,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If admin is required and user is not admin, redirect to home
+  // If admin is required and user is not admin, redirect to dashboard
   if (requireAdmin && !user.is_staff) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // If authenticated and admin check passes (if required), render children

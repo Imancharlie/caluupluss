@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { toast } from 'sonner';
+import academicApi from '@/services/academicApi';
 
 interface StatCardProps {
   title: string;
@@ -67,6 +68,10 @@ const AdminPanel = () => {
     recent_activities: []
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [uniName, setUniName] = useState('');
+  const [uniCountry, setUniCountry] = useState('');
+  const [collegeName, setCollegeName] = useState('');
+  const [collegeUniversityId, setCollegeUniversityId] = useState('');
 
   useEffect(() => {
     // Check authentication status first
@@ -103,7 +108,7 @@ const AdminPanel = () => {
         return;
       }
 
-      const response = await fetch('https://caluu.pythonanywhere.com/api/admin/dashboard/', {
+      const response = await fetch('http://localhost:8000/api/admin/dashboard/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -158,7 +163,7 @@ const AdminPanel = () => {
     if (!searchQuery.trim()) return;
     
     try {
-      const response = await fetch(`https://caluu.pythonanywhere.com/api/admin/search/?q=${encodeURIComponent(searchQuery)}`, {
+      const response = await fetch(`http://localhost:8000/api/admin/search/?q=${encodeURIComponent(searchQuery)}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -365,6 +370,83 @@ const AdminPanel = () => {
               icon={BookOpen}
               onClick={() => window.open('https://caluu.pythonanywhere.com/admin_site/', '_blank')}
             />
+            {/* Create University */}
+            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-3">Create University</h3>
+              <div className="space-y-3">
+                <input
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50"
+                  placeholder="University name"
+                  value={uniName}
+                  onChange={(e) => setUniName(e.target.value)}
+                />
+                <input
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50"
+                  placeholder="Country"
+                  value={uniCountry}
+                  onChange={(e) => setUniCountry(e.target.value)}
+                />
+                <button
+                  className="w-full bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-white"
+                  onClick={async () => {
+                    try {
+                      if (!uniName.trim() || !uniCountry.trim()) {
+                        toast.error('Name and country are required');
+                        return;
+                      }
+                      const created = await academicApi.createUniversity({ name: uniName.trim(), country: uniCountry.trim() });
+                      toast.success(`University created: ${created.name}`);
+                      setUniName('');
+                      setUniCountry('');
+                    } catch (err: any) {
+                      const msg = err?.response?.data?.error || err?.response?.data?.detail || 'Failed to create university';
+                      toast.error(msg);
+                    }
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            {/* Create College */}
+            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-3">Create College</h3>
+              <div className="space-y-3">
+                <input
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50"
+                  placeholder="College name"
+                  value={collegeName}
+                  onChange={(e) => setCollegeName(e.target.value)}
+                />
+                <input
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50"
+                  placeholder="University ID (UUID)"
+                  value={collegeUniversityId}
+                  onChange={(e) => setCollegeUniversityId(e.target.value)}
+                />
+                <button
+                  className="w-full bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-3 py-2 text-white"
+                  onClick={async () => {
+                    try {
+                      if (!collegeName.trim() || !collegeUniversityId.trim()) {
+                        toast.error('Name and university ID are required');
+                        return;
+                      }
+                      const created = await academicApi.createCollege({ name: collegeName.trim(), university: collegeUniversityId.trim() });
+                      toast.success(`College created: ${created.name}`);
+                      setCollegeName('');
+                      setCollegeUniversityId('');
+                    } catch (err: any) {
+                      const msg = err?.response?.data?.error || err?.response?.data?.detail || 'Failed to create college';
+                      toast.error(msg);
+                    }
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

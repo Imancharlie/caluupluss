@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import axios from "axios";
 
-const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
+const API_BASE_URL = "http://localhost:8000/api";
 
 interface College {
   id: string;

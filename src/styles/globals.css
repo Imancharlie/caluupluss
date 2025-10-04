@@ -11,19 +11,27 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 98%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
+    --muted: 210 40% 98%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 210 40% 98%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* Custom Caluu colors */
+    --caluu-blue: 221.2 83.2% 53.3%;
+    --caluu-blue-light: 221.2 83.2% 65%;
+    --caluu-blue-dark: 221.2 83.2% 35%;
+    --caluu-gray: 210 40% 96%;
+    --caluu-gray-light: 210 40% 98%;
+    --caluu-gray-dark: 210 40% 90%;
   }
 
   .dark {
@@ -115,4 +123,87 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* White-dominant theme utilities */
+.bg-caluu-white {
+  background-color: hsl(0 0% 100%);
+}
+
+.bg-caluu-gray {
+  background-color: hsl(var(--caluu-gray));
+}
+
+.bg-caluu-gray-light {
+  background-color: hsl(var(--caluu-gray-light));
+}
+
+.bg-caluu-gray-dark {
+  background-color: hsl(var(--caluu-gray-dark));
+}
+
+.text-caluu-blue {
+  color: hsl(var(--caluu-blue));
+}
+
+.text-caluu-blue-light {
+  color: hsl(var(--caluu-blue-light));
+}
+
+.text-caluu-blue-dark {
+  color: hsl(var(--caluu-blue-dark));
+}
+
+.border-caluu-blue {
+  border-color: hsl(var(--caluu-blue));
+}
+
+.border-caluu-gray {
+  border-color: hsl(var(--caluu-gray));
+}
+
+/* Card styles for white theme */
+.card-white {
+  @apply bg-white border border-gray-200 shadow-sm rounded-lg;
+}
+
+.card-white-hover {
+  @apply card-white hover:shadow-md hover:border-gray-300 transition-all duration-200;
+}
+
+/* Button styles for white theme */
+.btn-white-primary {
+  @apply bg-caluu-blue text-white hover:bg-caluu-blue-light px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-white-secondary {
+  @apply bg-white text-caluu-blue border border-caluu-blue hover:bg-caluu-gray-light px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-white-outline {
+  @apply bg-transparent text-caluu-blue border border-caluu-blue hover:bg-caluu-blue hover:text-white px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+/* Input styles for white theme */
+.input-white {
+  @apply bg-white border border-gray-300 focus:border-caluu-blue focus:ring-2 focus:ring-caluu-blue/20 rounded-lg px-3 py-2;
+}
+
+/* Loading animation improvements */
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounce 2s infinite;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus styles */
+.focus-caluu {
+  @apply focus:outline-none focus:ring-2 focus:ring-caluu-blue/20 focus:border-caluu-blue;
 } 

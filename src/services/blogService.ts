@@ -1,8 +1,8 @@
 import axios from 'axios';
 import type { BlogPost } from '@/types/blog';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://caluu.pythonanywhere.com/api';
-const BASE_URL = 'https://caluu.pythonanywhere.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const BASE_URL = 'http://localhost:8000';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({

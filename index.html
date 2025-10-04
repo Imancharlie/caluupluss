@@ -9,15 +9,15 @@
     <meta name="theme-color" content="#1a365d" />
     
     <!-- Enhanced SEO Meta Description -->
-    <meta name="description" content="CALUU - Free GPA Calculator & Academic Planning Tool for UDSM, University of Dar es Salaam students. Calculate GPA, plan courses, track academic progress. How to calculate GPA made easy with our comprehensive academic tools." />
+    <meta name="description" content="CALUU – AI-powered academic best friend for university students across Tanzania (UDSM, UDOM, IFM, Mzumbe, MUST, St. Joseph, Kampala International Tanzania, and more). Calculate GPA, plan courses and timetables, manage programs, get academic guidance, counseling and supervision – all in one place." />
     
     <meta name="author" content="Kodin Softwares" />
     
     <!-- Enhanced Keywords for Better SEO -->
-    <meta name="keywords" content="GPA calculator, UDSM GPA calculator, University of Dar es Salaam, how to calculate GPA, academic planning, grade point average calculator, university grades, academic success, student tools, education planning, Tanzania university, UDSM academic tools, free GPA calculator, academic journey, course planning, grade tracker, academic progress, university students Tanzania, CGPA calculator, semester GPA, academic performance tracker" />
+    <meta name="keywords" content="GPA calculator Tanzania, AI study assistant, academic best friend, course planning, timetable planner, UDSM, UDOM, IFM, Mzumbe, MUST, St Joseph University, Kampala International University Tanzania, university tools, academic supervision, student counseling, CGPA calculator, semester GPA, academic progress tracker, program and course management, Tanzania universities" />
     
     <!-- Enhanced Title with Target Keywords -->
-    <title>CALUU - Free GPA Calculator for UDSM | Academic Planning Tool | How to Calculate GPA</title>
+    <title>CALUU – AI Academic Assistant for Tanzania Universities | GPA, Timetable, Course & Program Planning</title>
     
     <!-- Structured Data for Rich Snippets -->
     <script type="application/ld+json">
@@ -25,25 +25,31 @@
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "CALUU",
-      "description": "Free GPA calculator and academic planning tool for university students, especially UDSM students in Tanzania.",
+      "description": "AI-powered academic assistant for Tanzania universities – GPA & CGPA calculator, course & program planning, timetable, academic guidance, counseling, and supervision.",
       "url": "https://caluu.kodin.co.tz/",
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Any",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Organization", "name": "Kodin Softwares" },
+      "featureList": [
+        "GPA & CGPA calculator",
+        "Program and course management",
+        "Timetable planning",
+        "AI academic guidance & counseling",
+        "Academic supervision & progress tracking",
+        "Articles, tips, and career resources"
+      ],
+      "inLanguage": "en",
+      "audience": { "@type": "EducationalAudience", "educationalRole": "students" },
+      "areaServed": {
+        "@type": "AdministrativeArea",
+        "name": "Tanzania"
       },
-      "author": {
-        "@type": "Organization",
-        "name": "Kodin Softwares"
-      },
-      "keywords": "GPA calculator, UDSM, academic planning, how to calculate GPA",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "ratingCount": "150"
-      }
+      "keywords": [
+        "Tanzania universities",
+        "UDSM", "UDOM", "IFM", "Mzumbe", "MUST", "St Joseph University", "Kampala International University Tanzania",
+        "GPA calculator", "AI study assistant", "academic planning"
+      ]
     }
     </script>
 
@@ -84,8 +90,8 @@
     <!-- Enhanced Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://caluu.kodin.co.tz/" />
-    <meta property="og:title" content="Caluu - Academic best friend" />
-    <meta property="og:description" content="Your academic best friend for timetables, GPA planning, and more!" />
+    <meta property="og:title" content="CALUU – AI Academic Assistant for Tanzania Universities" />
+    <meta property="og:description" content="GPA & CGPA calculator, course & program planning, timetable, AI guidance and supervision for UDSM, UDOM, IFM, Mzumbe, MUST, St Joseph, KIU (TZ) and more." />
     <meta property="og:image" content="/caluu.jpg" />
     <meta property="og:image:alt" content="Caluu - Academic best friend" />
     <meta property="og:site_name" content="CALUU" />
@@ -94,8 +100,8 @@
     <!-- Enhanced Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://caluu.kodin.co.tz/" />
-    <meta name="twitter:title" content="Caluu - Academic best friend" />
-    <meta name="twitter:description" content="Your academic best friend for timetables, GPA planning, and more!" />
+    <meta name="twitter:title" content="CALUU – AI Academic Assistant for Tanzania Universities" />
+    <meta name="twitter:description" content="AI-powered GPA, timetable, course & program planning, counseling and supervision for university students across Tanzania." />
     <meta name="twitter:image" content="/caluu.jpg" />
     <meta name="twitter:image:alt" content="Caluu - Academic best friend" />
     <meta name="twitter:site" content="@kodinsoftwares" />
@@ -150,13 +156,11 @@
     <link rel="dns-prefetch" href="//fonts.gstatic.com" />
     
   </head>
-  <body>
+  <body class="bg-caluu-blue-dark min-h-screen">
     <!-- Skip to main content for accessibility -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 bg-blue-600 text-white p-2 z-50">
-      Skip to main content
-    </a>
     
-    <div id="root"></div>
+    
+    <div id="root" class="min-h-screen"></div>
     
     <!-- Structured Data for Breadcrumbs (add this if you have navigation) -->
     <script type="application/ld+json">
@@ -182,30 +186,13 @@
     
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Enhanced Service Worker Registration -->
+    <!-- Disable Service Worker: unregister any existing workers -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful');
-              
-              // Update available
-              registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New content available, refresh
-                    if (confirm('New version available! Refresh to update?')) {
-                      window.location.reload();
-                    }
-                  }
-                });
-              });
-            })
-            .catch(err => {
-              console.log('ServiceWorker registration failed: ', err);
-            });
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
         });
       }
     </script>

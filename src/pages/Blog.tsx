@@ -23,6 +23,7 @@ const Blog = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -72,11 +73,12 @@ const Blog = () => {
   }, [location, searchQuery, sortBy]);
 
   const sortedPosts = [...posts]
-    .filter(post => 
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.tags || []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
+    .filter(post => {
+      const matchesQuery = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (post.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const tagMatch = !activeTag || (post.tags || []).includes(activeTag);
+      return matchesQuery && tagMatch;
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case "trending":
@@ -176,6 +178,19 @@ const Blog = () => {
                 Most Popular
               </option>
             </select>
+            {/* Tag filters */}
+            <div className="w-full flex flex-wrap gap-2">
+              {Array.from(new Set(posts.flatMap(p => p.tags || []))).slice(0, 10).map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(prev => prev === tag ? null : tag)}
+                  className={`text-xs px-3 py-1 rounded-full border transition-colors ${activeTag === tag ? 'bg-white text-caluu-blue border-white' : 'text-white/80 border-white/20 hover:bg-white/10'}`}
+                  aria-pressed={activeTag === tag}
+                >
+                  <span className="inline-flex items-center"><Tag className="w-3 h-3 mr-1" /> {tag}</span>
+                </button>
+              ))}
+            </div>
           </motion.div>
 
           {/* Blog Posts Grid */}
@@ -239,6 +254,8 @@ const Blog = () => {
                         alt={post.title}
                         className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
+                        decoding="async"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     </div>

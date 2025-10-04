@@ -73,6 +73,18 @@ export default {
 						light: '#f1f5f9',
 						DEFAULT: '#94a3b8'
 					}
+				},
+				cream: {
+					50: '#fefdf8',
+					100: '#fdf9f0',
+					200: '#faf2e1',
+					300: '#f6e8c7',
+					400: '#f0d9a8',
+					500: '#e8c885',
+					600: '#deb562',
+					700: '#d4a23f',
+					800: '#c98f1c',
+					900: '#be7c00'
 				}
 			},
 			borderRadius: {

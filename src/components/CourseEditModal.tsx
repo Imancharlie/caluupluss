@@ -1,322 +1,320 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X, Plus, Trash2, RotateCcw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Course {
   id: string;
   code: string;
   name: string;
-  credit_hours: number;
-  is_elective?: boolean;
-  isEdited?: boolean; // Flag if this course has been locally edited
-  isAdded?: boolean;  // Flag if this is a newly added course
-  isDeleted?: boolean; // Flag if this course is marked for deletion (though we just filter it out)
-  // originalId?: string; // Not strictly needed with current ID handling for existing courses
+  credits: number;
+  type: 'core' | 'elective';
+  semester: number;
+  year: number;
+  program: string;
+  program_name: string;
 }
 
 interface CourseEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  courses: Course[]; // Current courses (potentially already merged with local edits)
-  originalCourses: Course[]; // The courses fetched directly from the API
-  onSave: (editedCourses: Course[]) => void; // Renamed from onSaveEdits
-  selection: {
-    programId: string;
-    academicYear: number;
+  courses: Course[];
+  onSave: (courses: Course[]) => void;
+  programName: string;
+  year: number;
     semester: number;
-  };
 }
 
 const CourseEditModal: React.FC<CourseEditModalProps> = ({
   isOpen,
   onClose,
   courses,
-  originalCourses, // Pass originalCourses
-  onSave, // Use the correct prop name
-  selection // Keep selection if needed for future logic, though not directly used in this modal's render
+  onSave,
+  programName,
+  year,
+  semester
 }) => {
-  // State to hold the courses being edited in the modal
   const [editedCourses, setEditedCourses] = useState<Course[]>([]);
-  // Counter for generating unique IDs for new courses
-  const [newCourseCounter, setNewCourseCounter] = useState(1);
+  const [newCourse, setNewCourse] = useState({ code: '', name: '', credits: 0, type: 'core' as 'core' | 'elective' });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
-  // When the modal opens or the 'courses' prop changes,
-  // initialize the 'editedCourses' state with a deep copy of 'courses'.
-  // We explicitly mark courses based on whether they differ from originalCourses.
   useEffect(() => {
     if (isOpen) {
-      const initialEditedCourses = courses.map(course => {
-        const original = originalCourses.find(oc => oc.id === course.id);
-        const isAdded = !original; // If no original, it's a new course
-        const isEdited = !isAdded && (
-          original?.code !== course.code ||
-          original?.name !== course.name ||
-          original?.credit_hours !== course.credit_hours
-        );
-        return { ...course, isAdded, isEdited };
-      }).filter(course => !course.isDeleted); // Ensure initially deleted ones aren't shown if not intended
-
-      setEditedCourses(initialEditedCourses);
+      setEditedCourses([...courses]);
     }
-  }, [isOpen, courses, originalCourses]); // Depend on originalCourses as well
+  }, [isOpen, courses]);
 
-  const handleCourseChange = (courseId: string, field: keyof Course, value: string | number) => {
-    setEditedCourses(prev => prev.map(course => {
-      if (course.id === courseId) {
-        const updatedCourse = { ...course, [field]: value };
-        // Mark as edited if it's an existing course and its value changes
-        // Don't mark as edited if it's a newly added course
-        if (!course.isAdded) {
-          const original = originalCourses.find(oc => oc.id === course.id);
-          const changed = original && (
-            (field === 'code' && original.code !== value) ||
-            (field === 'name' && original.name !== value) ||
-            (field === 'credit_hours' && original.credit_hours !== value)
-          );
-          updatedCourse.isEdited = changed || course.isEdited; // Retain edited status if already edited
-        }
-        return updatedCourse;
-      }
-      return course;
-    }));
+  const handleAddCourse = () => {
+    if (newCourse.code && newCourse.name && newCourse.credits > 0) {
+      const course: Course = {
+        id: `temp-${Date.now()}`,
+        code: newCourse.code,
+        name: newCourse.name,
+        credits: newCourse.credits,
+        type: newCourse.type,
+        program: '',
+        program_name: programName,
+        year: year,
+        semester: semester
+      };
+      
+      setEditedCourses(prev => [...prev, course]);
+      setNewCourse({ code: '', name: '', credits: 0, type: 'core' });
+      setShowAddForm(false);
+      toast.success('Course added!');
+    }
   };
 
-  const addNewCourse = () => {
-    const newCourse: Course = {
-      id: `new_course_${Date.now()}_${newCourseCounter}`, // Unique ID for new course
-      code: '',
-      name: '',
-      credit_hours: 3, // Default credit hours
-      isAdded: true, // Mark as newly added
-      isEdited: false, // Not edited yet
-    };
-
-    setEditedCourses(prev => [...prev, newCourse]);
-    setNewCourseCounter(prev => prev + 1); // Increment counter for next new course
+  const handleEditCourse = (course: Course) => {
+    setEditingCourse(course);
+    setNewCourse({
+      code: course.code,
+      name: course.name,
+      credits: course.credits,
+      type: course.type
+    });
+    setShowAddForm(true);
   };
 
-  const deleteCourse = (courseId: string) => {
-    setEditedCourses(prev => prev.filter(course => course.id !== courseId));
-    // For robust tracking of deletions, you might want to add an isDeleted flag
-    // and filter based on it, instead of immediately removing.
-    // However, for this implementation, filtering them out is simpler as they won't be saved.
-  };
-
-  const resetCourse = (courseId: string) => {
-    const originalCourse = originalCourses.find(c => c.id === courseId);
-    if (originalCourse) {
-      setEditedCourses(prev => prev.map(course =>
-        course.id === courseId
-          ? { ...originalCourse, isEdited: false, isAdded: false } // Reset flags
-          : course
+  const handleUpdateCourse = () => {
+    if (editingCourse && newCourse.code && newCourse.name && newCourse.credits > 0) {
+      setEditedCourses(prev => prev.map(c => 
+        c.id === editingCourse.id 
+          ? { ...c, code: newCourse.code, name: newCourse.name, credits: newCourse.credits, type: newCourse.type }
+          : c
       ));
-    } else {
-      // If no original course, it means it was a newly added course.
-      // In this case, "resetting" means deleting it.
-      setEditedCourses(prev => prev.filter(course => course.id !== courseId));
+      setEditingCourse(null);
+      setNewCourse({ code: '', name: '', credits: 0, type: 'core' });
+      setShowAddForm(false);
+      toast.success('Course updated!');
     }
   };
 
-  const resetAllCourses = () => {
-    // Reset to the original state fetched from the API
-    setEditedCourses(originalCourses.map(course => ({ ...course, isEdited: false, isAdded: false })));
-    setNewCourseCounter(1); // Reset new course counter as well
+  const handleCancelEdit = () => {
+    setEditingCourse(null);
+    setNewCourse({ code: '', name: '', credits: 0, type: 'core' });
+    setShowAddForm(false);
+  };
+
+  const handleDeleteCourse = (courseId: string) => {
+    setEditedCourses(prev => prev.filter(c => c.id !== courseId));
+    toast.success('Course removed!');
   };
 
   const handleSave = () => {
-    // Basic validation
-    const invalidCourses = editedCourses.filter(course =>
-      !course.code.trim() || !course.name.trim() || course.credit_hours <= 0
-    );
-
-    if (invalidCourses.length > 0) {
-      alert('Please fill in all required fields (Code, Name, Credits) for all courses and ensure credit hours are greater than 0.');
-      return;
-    }
-
-    // Pass the edited courses back to the parent component
     onSave(editedCourses);
-    // onClose(); // onClose is called by onSave to ensure modal closes after successful save
+    onClose();
   };
 
-  if (!isOpen) return null;
+  const coreCourses = editedCourses.filter(c => c.type === 'core');
+  const electiveCourses = editedCourses.filter(c => c.type === 'elective');
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <motion.div
-        className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-xl sm:text-2xl font-semibold text-caluu-blue-dark">
-            Edit Courses
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={resetAllCourses}
-              variant="outline"
-              size="sm"
-              className="text-xs sm:text-sm"
-            >
-              <RotateCcw className="w-4 h-4 mr-1" />
-              Reset All
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Courses</DialogTitle>
+          <DialogDescription>
+            Manage your courses for {programName} - Year {year}, Semester {semester}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Add/Edit Course Form */}
+          {showAddForm && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {editingCourse ? 'Edit Course' : 'Add New Course'}
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                    <X className="w-4 h-4" />
             </Button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-grow">
-          <div className="space-y-4">
-            {editedCourses.map((course, index) => (
-              <motion.div
-                key={course.id}
-                className={`border rounded-lg p-4 ${
-                  course.isEdited ? 'border-orange-300 bg-orange-50' :
-                  course.isAdded ? 'border-green-300 bg-green-50' :
-                  'border-gray-200 bg-white'
-                }`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }} // Slightly adjusted delay for better feel
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {course.isEdited && (
-                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                        Edited
-                      </span>
-                    )}
-                    {course.isAdded && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                        New
-                      </span>
-                    )}
-                    {course.is_elective && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        Elective
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {/* Show reset button only if it's an edited existing course */}
-                    {course.isEdited && !course.isAdded && (
-                      <button
-                        onClick={() => resetCourse(course.id)}
-                        className="text-orange-600 hover:text-orange-800 p-1"
-                        title="Reset to original"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteCourse(course.id)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                      title="Delete course"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                  <div className="sm:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Course Code *
-                    </label>
-                    <input
-                      type="text"
-                      value={course.code}
-                      onChange={(e) => handleCourseChange(course.id, 'code', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-caluu-blue focus:border-transparent"
-                      placeholder="e.g., CS101"
-                      required
-                    />
-                  </div>
-
-                  <div className="sm:col-span-7">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Course Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={course.name}
-                      onChange={(e) => handleCourseChange(course.id, 'name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-caluu-blue focus:border-transparent"
-                      placeholder="e.g., Introduction to Computer Science"
-                      required
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Credits *
-                    </label>
-                    <input
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={newCourse.code}
+                    onChange={(e) => setNewCourse({ ...newCourse, code: e.target.value })}
+                    placeholder="Course Code"
+                    className="text-xs h-8"
+                  />
+                  <Input
+                    value={newCourse.name}
+                    onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                    placeholder="Course Name"
+                    className="text-xs h-8"
+                  />
+                  <Input
                       type="number"
-                      min="0.5" // Minimum credit hours to avoid 0 or negative
-                      max="10"
-                      step="0.5"
-                      value={course.credit_hours}
-                      onChange={(e) => handleCourseChange(course.id, 'credit_hours', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-caluu-blue focus:border-transparent"
-                      required
-                    />
+                    value={newCourse.credits}
+                    onChange={(e) => setNewCourse({ ...newCourse, credits: parseInt(e.target.value) || 0 })}
+                    placeholder="Credits"
+                    className="text-xs h-8"
+                  />
+                  <Select
+                    value={newCourse.type}
+                    onValueChange={(value: 'core' | 'elective') => setNewCourse({ ...newCourse, type: value })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="core">Core</SelectItem>
+                      <SelectItem value="elective">Elective</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  </div>
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    onClick={editingCourse ? handleUpdateCourse : handleAddCourse} 
+                    className="bg-green-600 hover:bg-green-700 text-xs h-7 px-3"
+                    size="sm"
+                  >
+                    {editingCourse ? 'Update' : 'Add'}
+                  </Button>
+                  <Button variant="outline" onClick={handleCancelEdit} className="text-xs h-7 px-3" size="sm">
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Core Courses */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                Core Courses ({coreCourses.length})
+              </h3>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setShowAddForm(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Core
+              </Button>
+            </div>
+            <div className="space-y-1">
+              {coreCourses.map((course) => (
+                <div key={course.id} className="bg-green-50 border border-green-200 rounded-md p-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-900 flex-shrink-0">{course.code}</span>
+                        <span className="text-xs text-gray-600 truncate max-w-[180px]">{course.name}</span>
+                        
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-100"
+                        onClick={() => handleEditCourse(course)}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
+                        onClick={() => handleDeleteCourse(course.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
 
-          {/* Add New Course Button */}
-          <motion.div
-            className="mt-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
+          {/* Elective Courses */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                Elective Courses ({electiveCourses.length})
+              </h3>
             <Button
-              onClick={addNewCourse}
-              variant="outline"
-              className="w-full border-dashed border-2 border-gray-300 hover:border-caluu-blue hover:bg-caluu-blue/5 py-4"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => setShowAddForm(true)}
             >
-              <Plus className="w-5 h-5 mr-2" />
-              Add New Course
+                <Plus className="w-4 h-4 mr-1" />
+                Add Elective
             </Button>
-          </motion.div>
+            </div>
+            <div className="space-y-1">
+              {electiveCourses.map((course) => (
+                <div key={course.id} className="bg-blue-50 border border-blue-200 rounded-md p-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-gray-900 flex-shrink-0">{course.code}</span>
+                        <span className="text-xs text-gray-600 truncate max-w-[200px]">{course.name}</span>
+                        
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-100"
+                        onClick={() => handleEditCourse(course)}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
+                        onClick={() => handleDeleteCourse(course.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <div className="text-sm text-gray-600">
-            {editedCourses.filter(c => c.isEdited).length} edited, {editedCourses.filter(c => c.isAdded).length} added
-          </div>
-          <div className="flex space-x-3">
-            <Button
-              variant="outline"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              className="bg-caluu-blue hover:bg-caluu-blue-light"
-            >
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} className="bg-caluu-blue hover:bg-caluu-blue-light text-white">
+            <Save className="w-4 h-4 mr-1" />
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

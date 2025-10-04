@@ -17,8 +17,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpPopup, setShowHelpPopup] = useState(false);
 
-  // Get the redirect path from location state or default to /selection
-  const from = (location.state as any)?.from?.pathname || "/selection";
+  // Get the redirect path from location state or default to /dashboard
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
   // Show help popup after 30 minutes
   useEffect(() => {
@@ -62,33 +62,18 @@ const Login = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-caluu-blue-dark flex flex-col">
-        <motion.div 
-          className="p-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <button 
-            onClick={() => navigate("/")}
-            className="flex items-center text-white opacity-70 hover:opacity-100 transition-opacity"
-          >
-            <ChevronLeft size={20} />
-            <span>Back</span>
-          </button>
-        </motion.div>
+      <div className="min-h-screen bg-gradient-to-br from-white to-gray-50 flex flex-col">
         
-        <div className="flex-1 flex items-center justify-center px-4">
+        <div className="flex-1 flex items-center justify-center px-4 py-12">
           <motion.div 
             className="w-full max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="text-center mb-8">
-              
+            <div className="text-center mb-6">
               <motion.h1 
-                className="text-3xl font-bold text-white mb-2"
+                className="text-3xl font-bold text-gray-900 mb-3"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.4 }}
@@ -97,7 +82,7 @@ const Login = () => {
               </motion.h1>
               
               <motion.p 
-                className="text-white/70"
+                className="text-gray-600"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.5 }}
@@ -113,8 +98,8 @@ const Login = () => {
               transition={{ duration: 0.5, delay: 0.6 }}
             >
               <form onSubmit={handleSubmit} className="p-6">
-                <div className="mb-4">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="mb-5">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Email
                   </label>
                   <input
@@ -122,7 +107,7 @@ const Login = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none"
                     placeholder="Enter your email"
                     disabled={isLoading}
                     required
@@ -131,7 +116,7 @@ const Login = () => {
                 </div>
                 
                 <div className="mb-6">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                     Password
                   </label>
                   <div className="relative">
@@ -140,7 +125,7 @@ const Login = () => {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none pr-10"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none pr-10"
                       placeholder="Enter your password"
                       disabled={isLoading}
                       required
@@ -168,10 +153,10 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`w-full py-3 px-4 bg-caluu-blue text-white font-medium rounded-lg shadow-md transition-all duration-300 ${
+                  className={`w-full py-4 px-6 bg-caluu-blue text-white font-semibold text-lg rounded-lg shadow-lg transition-all duration-300 ${
                     isLoading 
                       ? "opacity-70 cursor-not-allowed" 
-                      : "hover:bg-caluu-blue-light hover:shadow-lg"
+                      : "hover:bg-caluu-blue-light hover:shadow-xl hover:scale-[1.02]"
                   }`}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
@@ -180,7 +165,7 @@ const Login = () => {
             </motion.div>
             
             <motion.div 
-              className="mt-4 text-center text-white/60 text-sm"
+              className="mt-4 text-center text-gray-600 text-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4, delay: 0.8 }}
@@ -188,9 +173,9 @@ const Login = () => {
               <p>Don't have an account?{" "}
                 <button 
                   onClick={() => navigate("/register")}
-                  className="text-white hover:underline"
+                  className="text-caluu-blue hover:text-caluu-blue-light hover:underline font-semibold text-base"
                 >
-                  Sign up
+                  Create Account
                 </button>
               </p>
             </motion.div>

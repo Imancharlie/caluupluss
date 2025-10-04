@@ -1,20 +1,49 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 import { useToast } from "@/hooks/use-toast";
+import api from "@/lib/api";
+import { useStudent } from "@/contexts/StudentContext";
+import { Course as BackendCourse } from "@/services/academicApi";
 import { Button } from "@/components/ui/button";
-import { Check, AlertTriangle, ChevronLeft, Edit } from "lucide-react";
-import axios from "axios";
-import CourseEditModal from "@/components/CourseEditModal"; // Import the modal
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+// Use global loader; avoid page-local overlay to prevent double loaders
+import { 
+  Calculator, 
+  Target, 
+  TrendingUp, 
+  BookOpen, 
+  Edit, 
+  CheckCircle, 
+  AlertTriangle,
+  ChevronLeft,
+  RefreshCw,
+  Sparkles,
+  BarChart3,
+  Award,
+  Zap
+} from "lucide-react";
+import CourseEditModal from "@/components/CourseEditModal";
+import academicApi from "@/services/academicApi";
 import {
   loadCourseEdits,
   saveCourseEdits,
   mergeCourses,
   coursesToEdits,
   getEditStatistics
-} from "@/utils/courseEditUtils"; // Import utilities
-
-const API_BASE_URL = "https://caluu.pythonanywhere.com/api";
+} from "@/utils/courseEditUtils";
 
 interface AcademicYearInfo {
   program_name: string;
@@ -22,25 +51,11 @@ interface AcademicYearInfo {
   program_id: number;
 }
 
-interface ApiCourse {
-  id: string;
-  code: string;
-  name: string;
-  credit_hours: string; // From API, it might be a string
-  academic_year_info: AcademicYearInfo;
-  optional: boolean;
-  semester: string;
-}
-
-interface Course {
-  id: string;
-  code: string;
-  name: string;
-  credit_hours: number; // Stored as number in frontend state
-  academic_year_info: AcademicYearInfo;
+interface Course extends BackendCourse {
+  academic_year_info?: AcademicYearInfo;
   is_elective?: boolean;
-  isEdited?: boolean; // Added for modal logic
-  isAdded?: boolean; // Added for modal logic
+  isEdited?: boolean;
+  isAdded?: boolean;
 }
 
 interface GradeEntry {
@@ -63,28 +78,50 @@ interface Selection {
   coursesConfirmed: boolean;
 }
 
+interface WorkplaceCourse {
+  id: string;
+  code: string;
+  name: string;
+  credits: number;
+  type: 'core' | 'elective';
+  semester?: number;
+  year?: number;
+}
+
 const GpaCalculator = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { 
+    studentProfile,
+    studentCourses,
+    gpaData,
+    gpaLoading,
+    loadStudentCourses,
+    loadGPA,
+    updateCourseGrade,
+    generateTargetGPA,
+    resetGrades
+  } = useStudent();
 
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [originalCourses, setOriginalCourses] = useState<Course[]>([]); // Store original API courses
+  const [originalCourses, setOriginalCourses] = useState<Course[]>([]);
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [gpa, setGpa] = useState<number | null>(null);
-  const [selectedElectives, setSelectedElectives] = useState<string[]>([]);
+  const [targetGpa, setTargetGpa] = useState<string>("");
+  const [isGeneratingGrades, setIsGeneratingGrades] = useState(false);
+  const [activeTab, setActiveTab] = useState("calculate");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackIssue, setFeedbackIssue] = useState("");
   const [feedbackDescription, setFeedbackDescription] = useState("");
-
   const [showNotification, setShowNotification] = useState(true);
-
-  // New state for edit functionality
   const [showEditModal, setShowEditModal] = useState(false);
   const [hasEdits, setHasEdits] = useState(false);
+  const [showNoCoursesModal, setShowNoCoursesModal] = useState(false);
+  const [showNoProfileModal, setShowNoProfileModal] = useState(false);
+  const [isSavingCourses, setIsSavingCourses] = useState(false);
 
   const gradePoints: GradePoint[] = [
     { grade: "A", points: 5.0 },
@@ -93,336 +130,388 @@ const GpaCalculator = () => {
     { grade: "C", points: 2.0 },
     { grade: "D", points: 1.0 },
     { grade: "E", points: 0.0 },
-    { grade: "F", points: 0.0 }, // Ensure 'F' is also covered
+    { grade: "F", points: 0.0 },
   ];
 
-  useEffect(() => {
-    const selectionData = sessionStorage.getItem("selection");
 
-    if (!selectionData) {
-      toast({
-        title: "No Selection",
-        description: "Please select your academic details first",
-        variant: "destructive"
-      });
-      navigate("/selection");
-      return;
-    }
-
-    const parsedSelection = JSON.parse(selectionData);
-    console.log('Loaded selection:', parsedSelection);
-    setSelection(parsedSelection);
-
-    // Load selected electives
-    const electivesData = sessionStorage.getItem("selectedElectives");
-    if (electivesData) {
-      setSelectedElectives(JSON.parse(electivesData));
-    }
-
-    // Only show the notification if courses are not confirmed
-    if (parsedSelection.coursesConfirmed === false) {
-      setShowNotification(true);
-    } else {
-      setShowNotification(false);
-    }
-
-    fetchCourses(parsedSelection);
-  }, [navigate, toast]);
-
-  const fetchCourses = async (selection: Selection) => {
+  const loadCoursesFromWorkplace = useCallback(async (selection: Selection) => {
     setIsLoading(true);
     try {
-      // First fetch core courses
-      const coreParams = {
-        program_id: selection.programId,
-        academic_year_id: selection.academicYearId,
-        semester: selection.semester.toString(),
-        optional: "false"
-      };
+      // Get courses from Workplace selection stored in sessionStorage
+      const workplaceCoursesData = sessionStorage.getItem("workplaceCourses");
+      
+      if (workplaceCoursesData) {
+        const workplaceCourses = JSON.parse(workplaceCoursesData);
+        
+        if (workplaceCourses.length > 0) {
+          // Convert workplace courses to the format expected by GPA calculator
+          const convertedCourses = workplaceCourses.map((course: WorkplaceCourse) => ({
+            id: course.id,
+            code: course.code,
+            name: course.name,
+            credits: course.credits || course.credits || 3, // Default to 3 credits if not specified
+            academic_year_info: {
+              program_name: selection.programName,
+              year: selection.academicYear || 1,
+              program_id: parseInt(selection.programId)
+            },
+            is_elective: course.type === 'elective',
+            optional: course.type === 'elective',
+            isEdited: false,
+            isAdded: false
+          }));
+          
+          setOriginalCourses(convertedCourses);
+          setHasEdits(false);
 
-      const coreUrl = `${API_BASE_URL}/courses/?${new URLSearchParams(coreParams).toString()}`;
-      console.log('Fetching core courses from:', coreUrl);
-
-      const coreResponse = await axios.get<ApiCourse[]>(coreUrl);
-      console.log('Core courses response:', coreResponse.data);
-
-      // Update program name from the first course's academic_year_info
-      if (coreResponse.data.length > 0 && coreResponse.data[0].academic_year_info) {
-        const programName = coreResponse.data[0].academic_year_info.program_name;
-        const updatedSelection = { ...selection, programName };
-        setSelection(updatedSelection);
-        sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
+          // Initialize grades
+          const savedGrades = sessionStorage.getItem("courseGrades");
+          const initialGrades = convertedCourses.map(course => {
+            const existingGrade = savedGrades ? JSON.parse(savedGrades).find((g: GradeEntry) => g.courseId === course.id) : null;
+            return {
+              courseId: course.id,
+              grade: existingGrade?.grade || "A"
+            };
+          });
+          setGrades(initialGrades);
+          sessionStorage.setItem("courseGrades", JSON.stringify(initialGrades));
+          
+          console.log("Loaded courses from Workplace:", convertedCourses);
+        } else {
+          // No courses found in workplace data
+          toast({
+            title: "No Courses Found",
+            description: "Please add some courses in the Workplace first",
+            variant: "destructive"
+          });
+          navigate("/workplace");
+        }
+      } else {
+        // No workplace courses data found
+        toast({
+          title: "No Course Selection",
+          description: "Please complete your course selection in the Workplace first",
+          variant: "destructive"
+        });
+        navigate("/workplace");
       }
 
-      // Then fetch elective courses
-      const electiveParams = {
-        program_id: selection.programId,
-        academic_year_id: selection.academicYearId,
-        semester: selection.semester.toString(),
-        optional: "true"
-      };
+    } catch (error) {
+      console.error("Error loading courses:", error);
+      toast({
+        title: "Error Loading Courses",
+        description: "Please complete your course selection in the Workplace first",
+        variant: "destructive"
+      });
+      navigate("/workplace");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate, toast]);
 
-      const electiveUrl = `${API_BASE_URL}/select-electives/?${new URLSearchParams(electiveParams).toString()}`;
-      console.log('Fetching elective courses from:', electiveUrl);
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const resp = await api.get('/students/data/');
+        const profile = resp.data;
 
-      const electiveResponse = await axios.get<ApiCourse[]>(electiveUrl);
-      console.log('Elective courses response:', electiveResponse.data);
+        if (!profile) {
+          setShowNoProfileModal(true);
+          setOriginalCourses([]);
+          setGrades([]);
+          return;
+        }
 
-      // Get selected electives from session storage
-      const selectedElectivesData = sessionStorage.getItem("selectedElectives");
-      const selectedElectiveIds = selectedElectivesData ? JSON.parse(selectedElectivesData) : [];
+        const selection: Selection = {
+          programId: profile.program.id,
+          programName: profile.program.name,
+          academicYearId: "1",
+          academicYear: profile.year,
+          semester: profile.semester,
+          containsElectives: (profile.courses || []).some((c: { type: 'core' | 'elective' }) => c.type === 'elective'),
+          coursesConfirmed: true
+        };
+        setSelection(selection);
 
-      // Filter elective courses to only include selected ones and format them
-      const selectedElectiveCourses = electiveResponse.data
-        .filter((course: ApiCourse) => selectedElectiveIds.includes(course.id))
-        .map((course: ApiCourse): Course => ({
+        const profileCourses = (profile.courses || []) as Array<{
+          id: string;
+          code: string;
+          name: string;
+          credits: number;
+          type: 'core' | 'elective';
+          semester: number;
+          year: number;
+        }>;
+        if (profileCourses.length === 0) {
+          setShowNoCoursesModal(true);
+          setOriginalCourses([]);
+          setGrades([]);
+          return;
+        }
+
+        const convertedCourses: Course[] = profileCourses.map((course) => ({
           id: course.id,
           code: course.code,
           name: course.name,
-          credit_hours: parseFloat(course.credit_hours),
-          academic_year_info: course.academic_year_info,
-          is_elective: true
+          credits: course.credits,
+          type: course.type,
+          semester: course.semester,
+          year: course.year,
+          program: profile.program.id,
+          program_name: profile.program.name
         }));
+        setOriginalCourses(convertedCourses);
 
-      // Format core courses
-      const formattedCoreCourses = coreResponse.data.map((course: ApiCourse): Course => ({
-        id: course.id,
-        code: course.code,
-        name: course.name,
-        credit_hours: parseFloat(course.credit_hours),
-        academic_year_info: course.academic_year_info
+        const gradesData: GradeEntry[] = convertedCourses.map(course => ({
+          courseId: course.id,
+          grade: "A"
+        }));
+        setGrades(gradesData);
+
+        if (gpaData) {
+          setGpa(gpaData.gpa);
+        }
+      } catch (error) {
+        console.error('Error fetching student profile for GPA:', error);
+        // Show a soft prompt to setup profile instead of navigating away
+        setShowNoProfileModal(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [navigate, toast, gpaData]);
+
+  const handleSaveEdits = async (editedCourses: Course[]) => {
+    setIsSavingCourses(true);
+    try {
+      // Format courses for backend save
+      const formattedCourses = editedCourses.map(course => ({
+        course_code: course.code,
+        course_name: course.name,
+        is_elective: course.type === 'elective',
+        credit_hour: course.credits,
+        course_id: course.id,
+        semester: course.semester,
+        year: course.year
       }));
 
-      // Combine core courses with selected elective courses
-      const apiCourses = [...formattedCoreCourses, ...selectedElectiveCourses];
-      setOriginalCourses(apiCourses); // Store original courses
+      console.log('Saving courses from GPA Calculator:', {
+        url: '/api/students/courses/batch/',
+        method: 'POST',
+        body: { courses: formattedCourses }
+      });
 
-      // Load and merge with local edits
-      // Use 'true' for preferBackend if you want backend to override local changes on initial load
-      // For GPA calculation, you want to apply *current* local edits, so merge appropriately.
-      const localEdits = await loadCourseEdits(selection, false);
-      const mergedCourses = mergeCourses(apiCourses, localEdits);
+      // Save to backend
+      await academicApi.saveCoursesBatch(formattedCourses);
 
-      setCourses(mergedCourses);
-      setHasEdits(Object.keys(localEdits).length > 0);
-
-      // Initialize grades with 'A' as default for all courses
-      // Try to load existing grades from session storage first
-      const savedGrades = sessionStorage.getItem("courseGrades");
-      const initialGrades = mergedCourses.map(course => {
-        const existingGrade = savedGrades ? JSON.parse(savedGrades).find((g: GradeEntry) => g.courseId === course.id) : null;
+      // Update local state
+      setOriginalCourses(editedCourses);
+      
+      // Update grades for new courses
+      const updatedGrades = editedCourses.map(course => {
+        const existingGrade = grades.find(g => g.courseId === course.id);
         return {
           courseId: course.id,
           grade: existingGrade?.grade || "A"
         };
       });
-      setGrades(initialGrades);
+      setGrades(updatedGrades);
+      setGpa(null);
 
-      // Save initial grades to session storage (this will overwrite if grades were already saved)
-      sessionStorage.setItem("courseGrades", JSON.stringify(initialGrades));
-
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      if (axios.isAxiosError(error)) {
-        console.error('Axios error details:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          config: error.config
-        });
-      }
       toast({
-        title: "Error",
-        description: `Failed to fetch courses: ${axios.isAxiosError(error) ? error.response?.data?.message || error.message : 'Unknown error'}`,
-        variant: "destructive"
+        title: "Courses Saved!",
+        description: "Your course changes have been saved successfully.",
+        variant: "default"
       });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // New function to handle course edits
-  const handleSaveEdits = async (editedCourses: Course[]) => {
-    try {
-      // Convert edited courses to edits format
-      const edits = coursesToEdits(editedCourses, originalCourses);
-
-      // Save edits (hybrid approach - localStorage + optional backend sync)
-      const saveResult = await saveCourseEdits(selection, edits, false); // syncToBackend = false for now
-
-      if (saveResult.local) {
-        // Update the courses state
-        setCourses(editedCourses);
-        setHasEdits(Object.keys(edits).length > 0);
-
-        // Update grades to match new course list
-        // Preserve existing grades for courses that are still present
-        const updatedGrades = editedCourses.map(course => {
-          const existingGrade = grades.find(g => g.courseId === course.id);
-          return {
-            courseId: course.id,
-            grade: existingGrade?.grade || "A"
-          };
-        });
-        setGrades(updatedGrades);
-        sessionStorage.setItem("courseGrades", JSON.stringify(updatedGrades));
-
-        // Clear existing GPA calculation, forcing a recalculation with new credits
-        setGpa(null);
-        setShowEditModal(false); // Close the modal on successful save
-
-        const stats = getEditStatistics(editedCourses, originalCourses);
-        toast({
-          title: "Changes Saved",
-          description: `${stats.edited} edited, ${stats.added} added, ${stats.deleted} removed`,
-          variant: "default"
-        });
-      } else {
-        throw new Error("Failed to save changes locally");
-      }
     } catch (error) {
       console.error("Error saving course edits:", error);
       toast({
-        title: "Save Error",
-        description: "Failed to save course edits. Please try again.",
-        variant: "destructive"
+        title: "Save Issue",
+        description: "Failed to save course changes. Please try again.",
+        variant: "warning"
       });
+    } finally {
+      setIsSavingCourses(false);
     }
   };
 
   const handleGradeChange = (courseId: string, grade: string) => {
+    // Update local state only - no backend communication
     setGrades(prevGrades => {
       const newGrades = prevGrades.map(g =>
         g.courseId === courseId ? { ...g, grade } : g
       );
-      // Save to session storage
-      sessionStorage.setItem("courseGrades", JSON.stringify(newGrades));
       return newGrades;
     });
-
-    setGpa(null);
+    setGpa(null); // Reset GPA so user can recalculate
   };
 
-  const calculateGpa = async () => {
+  const calculateGpa = () => {
     setIsCalculating(true);
-
     try {
-      // Transform the data to match backend expectations
-      // IMPORTANT: Include credit_hours from the `courses` state (which holds the edited courses)
-      const coursesData = grades.map(entry => {
-        const course = courses.find(c => c.id === entry.courseId);
-        if (!course) {
-          console.warn(`Course with ID ${entry.courseId} not found in current courses state.`);
-          return null; // Skip if course data is missing
+      // Local GPA calculation
+      let totalPoints = 0;
+      let totalCredits = 0;
+      
+      originalCourses.forEach(course => {
+        const gradeEntry = grades.find(g => g.courseId === course.id);
+        if (gradeEntry) {
+          const gradePoint = gradePoints.find(gp => gp.grade === gradeEntry.grade);
+          if (gradePoint) {
+            totalPoints += gradePoint.points * course.credits;
+            totalCredits += course.credits;
+          }
         }
-        return {
-          id: entry.courseId,
-          grade: entry.grade,
-          credit_hours: course.credit_hours // Use the credit_hours from the *current* `courses` state
-        };
-      }).filter(Boolean); // Filter out any null entries
-
-      // Add a check to ensure coursesData is not empty after filtering
-      if (coursesData.length === 0) {
-        toast({
-          title: "Calculation Error",
-          description: "No valid courses with credit hours found for GPA calculation.",
-          variant: "destructive"
-        });
-        setIsCalculating(false);
-        return;
-      }
-
-      // Send data to backend for calculation
-      const response = await axios.post(`${API_BASE_URL}/calculate-gpa/`, {
-        courses: coursesData, // This now includes credit_hours
-        program_id: selection?.programId,
-        academic_year: selection?.academicYear,
-        save_data: true // This will save the GPA data
       });
-
-      const calculatedGpa = response.data.gpa;
+      
+      const calculatedGpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
       setGpa(calculatedGpa);
-
+      
       toast({
-        title: "GPA Calculated",
+        title: "GPA Calculated!",
         description: `Your GPA is ${calculatedGpa.toFixed(2)}`,
         variant: "default"
       });
     } catch (error) {
       console.error("Error calculating GPA:", error);
-      if (axios.isAxiosError(error)) {
-        console.error('Axios error details:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          config: error.config
-        });
-      }
       toast({
-        title: "Calculation Error",
-        description: error.response?.data?.error || "There was an error calculating your GPA. Please try again.",
-        variant: "destructive"
+        title: "Calculation Issue",
+        description: "Failed to calculate GPA. Please try again.",
+        variant: "warning"
       });
     } finally {
       setIsCalculating(false);
     }
   };
 
-  const submitFeedback = async () => {
-    if (!feedbackIssue) {
+  const generateTargetGrades = () => {
+    if (!targetGpa || parseFloat(targetGpa) < 0 || parseFloat(targetGpa) > 5) {
       toast({
-        title: "Error",
-        description: "Please select an issue type",
+        title: "Invalid Target GPA",
+        description: "Please enter a valid GPA between 0.0 and 5.0",
         variant: "destructive"
       });
       return;
     }
 
-    if (!feedbackDescription) {
-      toast({
-        title: "Error",
-        description: "Please provide a description of the issue",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    setIsGeneratingGrades(true);
     try {
-      await axios.post(`${API_BASE_URL}/submit-feedback/`, {
-        issue_type: feedbackIssue,
-        description: feedbackDescription,
-        program_id: selection?.programId,
-        academic_year_id: selection?.academicYearId,
-        semester: selection?.semester
-      });
+      const targetGpaValue = parseFloat(targetGpa);
+      
+      // Improved target grade generation algorithm
+      const totalCredits = originalCourses.reduce((sum, course) => sum + course.credits, 0);
+      const totalPointsNeeded = targetGpaValue * totalCredits;
+      
+      // Sort courses by credits (descending) for better distribution
+      const sortedCourses = [...originalCourses].sort((a, b) => b.credits - a.credits);
+      
+      const newGrades: GradeEntry[] = [];
+      let remainingPoints = totalPointsNeeded;
+      let remainingCredits = totalCredits;
+      
+      for (let i = 0; i < sortedCourses.length; i++) {
+        const course = sortedCourses[i];
+        const isLastCourse = i === sortedCourses.length - 1;
+        
+        let targetPointsPerCredit: number;
+        
+        if (isLastCourse) {
+          // For the last course, use all remaining points
+          targetPointsPerCredit = remainingPoints / course.credits;
+        } else {
+          // For other courses, calculate based on remaining points and credits
+          const remainingCourses = sortedCourses.length - i;
+          const averagePointsPerCredit = remainingPoints / remainingCredits;
+          
+          // Add some variation to make it more realistic
+          const variation = (Math.random() - 0.5) * 0.5; // ±0.25 variation
+          targetPointsPerCredit = Math.max(0, Math.min(5, averagePointsPerCredit + variation));
+        }
+        
+        // Find the closest grade to the target points per credit
+        let bestGrade = "A";
+        let bestDiff = Math.abs(5.0 - targetPointsPerCredit);
+        
+        gradePoints.forEach(gp => {
+          const diff = Math.abs(gp.points - targetPointsPerCredit);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestGrade = gp.grade;
+          }
+        });
+        
+        const gradePointsValue = gradePoints.find(gp => gp.grade === bestGrade)?.points || 0;
+        const coursePoints = gradePointsValue * course.credits;
+        
+        newGrades.push({
+          courseId: course.id,
+          grade: bestGrade
+        });
+        
+        remainingPoints -= coursePoints;
+        remainingCredits -= course.credits;
+      }
+      
+      setGrades(newGrades);
+      setGpa(null);
+
+      // Auto-scroll to the grades section
+      setTimeout(() => {
+        const gradesSection = document.querySelector('[data-tab="target"] .space-y-3:last-child');
+        if (gradesSection) {
+          gradesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
 
       toast({
-        title: "Feedback Submitted",
-        description: "Thank you for your feedback!",
+        title: "Grades Generated!",
+        description: `Target grades generated for GPA ${targetGpa}`,
         variant: "default"
       });
 
-      setShowFeedbackModal(false);
-      setFeedbackIssue("");
-      setFeedbackDescription("");
-      setShowNotification(false);
-
-      // Update the selection to mark courses as confirmed
-      const updatedSelection = {...selection!, coursesConfirmed: true};
-      sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
-      setSelection(updatedSelection);
-
     } catch (error) {
-      console.error("Error submitting feedback:", error);
+      console.error("Error generating grades:", error);
       toast({
-        title: "Submission Error",
-        description: "There was an error submitting your feedback. Please try again.",
+        title: "Generation Error",
+        description: "Failed to generate grades. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingGrades(false);
+    }
+  };
+
+  const resetGradesHandler = () => {
+    try {
+      // Reset all grades to A locally
+      const resetGrades: GradeEntry[] = originalCourses.map(course => ({
+        courseId: course.id,
+        grade: "A"
+      }));
+      
+      setGrades(resetGrades);
+      setGpa(null);
+      setTargetGpa("");
+      
+      toast({
+        title: "Grades Reset",
+        description: "All grades have been reset to A",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error resetting grades:", error);
+      toast({
+        title: "Reset Error",
+        description: "Failed to reset grades. Please try again.",
         variant: "destructive"
       });
     }
   };
 
   const confirmCourses = () => {
-    // Update the selection to mark courses as confirmed
     const updatedSelection = {...selection!, coursesConfirmed: true};
     sessionStorage.setItem("selection", JSON.stringify(updatedSelection));
     setSelection(updatedSelection);
@@ -454,313 +543,491 @@ const GpaCalculator = () => {
     }
   };
 
+
+  // Avoid a local full-screen loader to prevent double overlays; allow page to render progressively
+
+  // Friendly modal when there are no courses
+  if (showNoCoursesModal) {
     return (
-  <>
-    <style>{`
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
-      .animate-shimmer {
-        animation: shimmer 3s infinite;
-      }
-      @keyframes glow-pulse {
-        0%, 100% { 
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 30px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
-        }
-        50% { 
-          box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.5), 0 0 50px rgba(59, 130, 246, 0.3);
-        }
-      }
-      .glow-button {
-        animation: glow-pulse 2s infinite;
-      }
-    `}</style>
-    <div className="min-h-screen bg-caluu-blue-dark pb-12">
-      <div className="container-app py-4 sm:py-8">
-        {selection && courses.length > 0 && (
-          <motion.div
-            className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 text-white mb-4 sm:mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="text-lg sm:text-xl font-semibold mb-1">
-              {courses[0]?.academic_year_info?.program_name || selection.programName}
-            </h2>
-            <div className="text-sm sm:text-base text-white/70">
-              <p>Year {courses[0]?.academic_year_info?.year || selection.academicYear}</p>
-              <p>Semester {selection.semester}</p>
-              {hasEdits && (
-                <p className="text-yellow-300 text-xs mt-1">
-                  ⚠ You have custom course edits applied
-                </p>
-              )}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center shadow-xl border border-gray-200">
+          <div className="p-4 bg-caluu-blue rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+            <BookOpen className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Courses Found</h2>
+          <p className="text-gray-600 mb-6">You do not have any enrolled courses yet. Add or confirm your courses in Workplace to use the GPA calculator.</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={() => navigate('/workplace')} className="bg-caluu-blue hover:bg-caluu-blue-light text-white">
+              Go to Workplace
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/dashboard')} className="border-gray-300">
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Friendly modal when there is no profile at all
+  if (showNoProfileModal) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl p-6 w-full max-w-md text-center shadow-xl border border-gray-200">
+          <div className="p-4 bg-caluu-blue rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center shadow-lg">
+            <Calculator className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Needed</h2>
+          <p className="text-gray-600 mb-6">Set up your university, program, year and semester in Workplace to enable GPA calculations.</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={() => navigate('/workplace')} className="bg-caluu-blue hover:bg-caluu-blue-light text-white">
+              Go to Workplace
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/dashboard')} className="border-gray-300">
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>GPA Calculator - Caluu Academic Assistant</title>
+        <meta name="description" content="Calculate your GPA and CGPA with our advanced calculator. Track your academic performance, set target grades, and plan your academic journey across Tanzanian universities." />
+        <meta name="keywords" content="GPA calculator, CGPA calculator, grade point average, academic performance, Tanzanian universities, grade tracking, academic planning" />
+        <meta property="og:title" content="GPA Calculator - Caluu Academic Assistant" />
+        <meta property="og:description" content="Calculate your GPA and CGPA with our advanced calculator. Track your academic performance and plan your academic journey." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${window.location.origin}/calculator`} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="GPA Calculator - Caluu Academic Assistant" />
+        <meta name="twitter:description" content="Calculate your GPA and CGPA with our advanced calculator. Track your academic performance." />
+        <link rel="canonical" href={`${window.location.origin}/calculator`} />
+      </Helmet>
+      <div className="min-h-screen bg-gradient-to-br from-white to-gray-50">
+        <div className="container mx-auto px-4 py-6 lg:py-8 max-w-7xl">
+        
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-6 lg:mb-8"
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-center mb-4 gap-4">
+            <div className="p-3 bg-caluu-blue rounded-full shadow-lg">
+              <Calculator className="w-8 h-8 text-white" />
             </div>
-          </motion.div>
-        )}
+            <div className="text-center sm:text-left">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">GPA Calculator</h1>
+              <p className="text-gray-600">Calculate your GPA or set target grades</p>
+            </div>
+          </div>
+          
+  
+        </motion.div>
 
         {showNotification && selection && !selection.coursesConfirmed && (
           <motion.div
-            className="bg-caluu-blue rounded-xl p-3 sm:p-4 mb-4 sm:mb-8 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
+            className="bg-caluu-blue text-white rounded-lg p-4 mb-6 shadow-lg"
           >
-            <div className="flex items-start sm:items-center text-white">
-              <Check size={18} className="mr-2 flex-shrink-0 mt-1 sm:mt-0" />
-              <p className="text-sm sm:text-base">Welcome to our updated GPA portal! Please review the course list and confirm everything is correct.</p>
-            </div>
-            <div className="flex space-x-2">
+            <div className="flex items-start">
+              <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium mb-2">Welcome to our updated GPA portal!</p>
+                <p className="text-sm opacity-90 mb-3">Please review the course list and confirm everything is correct.</p>
+                <div className="flex gap-2">
               <Button
                 onClick={confirmCourses}
                 variant="outline"
-                className="bg-white text-caluu-blue hover:bg-white/90 text-sm sm:text-base"
+                    size="sm"
+                    className="bg-white text-caluu-blue hover:bg-gray-50 border-white"
               >
                 Confirm
               </Button>
               <Button
                 onClick={() => setShowFeedbackModal(true)}
                 variant="outline"
-                className="bg-white/20 text-white hover:bg-white/30 border-white/30 text-sm sm:text-base"
+                    size="sm"
+                    className="bg-white/20 text-white hover:bg-white/30 border-white/30"
               >
                 Report Issue
               </Button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
 
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden">
-          {isLoading ? (
-            <div className="p-6 sm:p-12 text-center">
-              <div className="animate-pulse flex flex-col items-center">
-                <div className="h-6 sm:h-8 bg-gray-200 rounded w-3/4 mb-4 sm:mb-6"></div>
-                <div className="h-24 sm:h-32 bg-gray-200 rounded w-full"></div>
-              </div>
-            </div>
-          ) : courses.length > 0 ? (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="p-3 sm:p-6"
-            >
-              <motion.div variants={itemVariants}>
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <h2 className="text-lg sm:text-xl font-semibold text-caluu-blue-dark">
-                    Enter Your Grades
-                  </h2>
-                  <button
-  onClick={() => setShowEditModal(true)}
-  className="glow-button relative flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-caluu-blue to-blue-600 hover:from-blue-600 hover:to-caluu-blue rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl hover:animate-none border-2 border-transparent hover:border-white/20"
->
-  <Edit size={16} className="drop-shadow-sm" />
-  <span className="drop-shadow-sm">Edit Courses</span>
-  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg animate-shimmer"></div>
-</button>
+        {originalCourses.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+          >
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-gray-100 h-12">
+                <TabsTrigger value="calculate" className="flex items-center gap-2 text-sm font-medium">
+                  <Calculator className="w-4 h-4" />
+                  <span className="hidden sm:inline">Calculate GPA</span>
+                  <span className="sm:hidden">Calculate</span>
+                </TabsTrigger>
+                <TabsTrigger value="target" className="flex items-center gap-2 text-sm font-medium">
+                  <Target className="w-4 h-4" />
+                  <span className="hidden sm:inline">Target GPA</span>
+                  <span className="sm:hidden">Target</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="calculate" className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-1">Enter Your Grades</h2>
+                   </div>
+                  <div className="flex gap-2 mt-4 sm:mt-0">
+                    <Button
+                      onClick={() => setShowEditModal(true)}
+                      variant="outline"
+                      className="flex items-center gap-2 btn-white-secondary"
+                      disabled={isSavingCourses}
+                    >
+                      {isSavingCourses ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Edit className="w-4 h-4" />
+                          Edit Courses
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={resetGradesHandler}
+                      variant="outline"
+                      className="flex items-center gap-2 btn-white-outline"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Reset
+                    </Button>
+                  </div>
                 </div>
-              </motion.div>
 
-              <div className="overflow-x-auto -mx-3 sm:mx-0">
-                <table className="w-full min-w-[300px]">
-                  <thead>
-                    <motion.tr variants={itemVariants}>
-                      <th className="text-left pb-2 sm:pb-4 pl-2 text-gray-600 text-sm sm:text-base w-[60%] sm:w-[60%]">Course</th>
-                      <th className="text-center pb-2 sm:pb-4 text-gray-600 text-sm sm:text-base w-[10%] sm:w-[10%]">Credits</th>
-                      <th className="text-center pb-2 sm:pb-4 text-gray-600 text-sm sm:text-base w-[30%] sm:w-[30%]">Grade</th>
-                    </motion.tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {courses.map((course, index) => (
-                      <motion.tr
-                        key={course.id}
-                        variants={itemVariants}
-                        custom={index}
-                        className={`hover:bg-gray-50 transition-colors ${course.is_elective ? 'bg-blue-50' : ''}`}
-                      >
-                        <td className="py-2 sm:py-4 pl-2 pr-1">
-                          <div className="font-medium text-gray-900 text-sm sm:text-base">
-                            {course.code}
-                            {course.is_elective && <span className="ml-1 sm:ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full">Elective</span>}
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1 leading-tight">{course.name}</div>
-                        </td>
-                        <td className="py-2 sm:py-4 text-center px-1">
-                          <div className="bg-caluu-blue/10 text-caluu-blue font-semibold px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full inline-block text-sm sm:text-base">
-                            {course.credit_hours}
-                          </div>
-                        </td>
-                        <td className="py-2 sm:py-4 text-center px-1">
-                          <select
+                <div className="space-y-3">
+                  {originalCourses.map((course, index) => (
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white border border-gray-200 rounded-md overflow-hidden hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="flex items-center py-2 px-3 border-b border-gray-100">
+                        <div className="w-16 shrink-0">
+                          <span className="text-xs font-semibold text-blue-600">{course.code}</span>
+                        </div>
+                        <div className="flex-1 min-w-0 px-2">
+                          <span className="text-xs text-gray-700 truncate block">{course.name}</span>
+                        </div>
+                        <div className="w-12 text-center shrink-0">
+                          <span className="text-xs text-gray-500">{course.credits}</span>
+                        </div>
+                        <div className="w-16 shrink-0 ml-2">
+                          <Select 
                             value={grades.find(g => g.courseId === course.id)?.grade || "A"}
-                            onChange={(e) => handleGradeChange(course.id, e.target.value)}
-                            className="form-select w-full max-w-[90px] sm:max-w-[100px] mx-auto text-center bg-white border-gray-300 focus:border-caluu-blue focus:ring-caluu-blue text-sm sm:text-base rounded-md"
+                            onValueChange={(value) => handleGradeChange(course.id, value)}
                           >
-                            {gradePoints.map(gp => (
-                              <option key={gp.grade} value={gp.grade}>
-                                {gp.grade}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            <SelectTrigger className="w-full h-6 px-2 text-xs border-gray-300">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="min-w-[60px]">
+                              {gradePoints.map(gp => (
+                                <SelectItem key={gp.grade} value={gp.grade} className="text-xs">
+                                  {gp.grade}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
 
-              <motion.div
-                variants={itemVariants}
-                className="mt-6 sm:mt-8 flex flex-col items-center"
-              >
+                <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={calculateGpa}
                   disabled={isCalculating}
-                  className="w-full max-w-xs py-4 sm:py-6 text-base sm:text-lg bg-caluu-blue hover:bg-caluu-blue-light transition-all duration-300"
-                >
-                  {isCalculating ? "Calculating..." : "Calculate GPA"}
+                    className="flex-1 btn-white-primary py-3 text-lg font-medium"
+                  >
+                    {isCalculating ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Calculator className="w-5 h-5 mr-2" />
+                        Calculate GPA
+                      </>
+                    )}
                 </Button>
 
                 {gpa !== null && (
                   <motion.div
-                    className="mt-4 sm:mt-6 text-center"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <div className="bg-caluu-blue-dark text-white py-2 sm:py-3 px-6 sm:px-8 rounded-lg inline-block">
-                      <p className="text-xs sm:text-sm uppercase tracking-wider mb-0.5 sm:mb-1 text-white/70">Your GPA</p>
-                      <p className="text-2xl sm:text-3xl font-bold">{gpa.toFixed(2)}</p>
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg p-6 text-center min-w-[200px]"
+                    >
+                      <div className="flex items-center justify-center mb-2">
+                        <Award className="w-6 h-6 mr-2" />
+                        <span className="text-sm font-medium">Your GPA</span>
+                      </div>
+                      <div className="text-3xl font-bold">{gpa.toFixed(2)}</div>
+                      <div className="text-sm opacity-90">
+                        {gpa >= 4.5 ? "Excellent!" : gpa >= 3.5 ? "Good!" : gpa >= 2.5 ? "Average" : "Needs Improvement"}
                     </div>
                   </motion.div>
                 )}
-              </motion.div>
+                </div>
+              </TabsContent>
 
-            </motion.div>
+              <TabsContent value="target" className="p-6">
+                <div className="text-center mb-6">
+                  
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">Set Your Target GPA</h2>
+                </div>
 
-          ) : (
-            <div className="p-6 sm:p-12 text-center">
-              <div className="text-caluu-blue-dark">
-                <AlertTriangle size={36} className="mx-auto mb-3 sm:mb-4 text-amber-500" />
-                <h2 className="text-lg sm:text-xl font-semibold mb-2">No Courses Available</h2>
-                <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
-                  It looks like courses haven't been added yet for this selection.
-                </p>
-                <Button
-                  onClick={() => navigate("/selection")}
-                  className="bg-caluu-blue hover:bg-caluu-blue-light text-sm sm:text-base"
-                >
-                  Go Back to Selection
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+                {/* Target GPA Input Section */}
+                <div className="max-w-lg mx-auto mb-8">
+                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <Label htmlFor="target-gpa" className="text-sm font-medium text-gray-700 mb-3 block">
+                      Target GPA (0.0 - 5.0)
+                    </Label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Input
+                        id="target-gpa"
+                        type="number"
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        value={targetGpa}
+                        onChange={(e) => setTargetGpa(e.target.value)}
+                        placeholder="e.g., 4.0"
+                        className="text-center text-lg font-medium border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <Button
+                        onClick={generateTargetGrades}
+                        disabled={isGeneratingGrades || !targetGpa}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingGrades ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Generate Grades
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Course Cards Section */}
+                <div className="mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Course Grades</h3>
+                      <p className="text-gray-600 text-sm">Generated grades to achieve your target GPA</p>
+                    </div>
+                    <div className="flex gap-2 mt-4 sm:mt-0">
+                      <Button
+                        onClick={() => setShowEditModal(true)}
+                        variant="outline"
+                        className="flex items-center gap-2 btn-white-secondary"
+                        disabled={isSavingCourses}
+                      >
+                        {isSavingCourses ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Edit className="w-4 h-4" />
+                            Edit Courses
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={resetGradesHandler}
+                        variant="outline"
+                        className="flex items-center gap-2 btn-white-outline"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {originalCourses.map((course, index) => (
+                      <motion.div
+                        key={course.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-white border border-gray-200 rounded-md overflow-hidden hover:bg-blue-50 transition-colors"
+                      >
+                        <div className="flex items-center py-2 px-3 border-b border-gray-100">
+                          <div className="w-16 shrink-0">
+                            <span className="text-xs font-semibold text-blue-600">{course.code}</span>
+                          </div>
+                          <div className="flex-1 min-w-0 px-2">
+                            <span className="text-xs text-gray-700 truncate block">{course.name}</span>
+                          </div>
+                          <div className="w-12 text-center shrink-0">
+                            <span className="text-xs text-gray-500">{course.credits}</span>
+                          </div>
+                          <div className="w-16 shrink-0 ml-2">
+                            <Select 
+                              value={grades.find(g => g.courseId === course.id)?.grade || "A"}
+                              onValueChange={(value) => handleGradeChange(course.id, value)}
+                            >
+                              <SelectTrigger className="w-full h-6 px-2 text-xs border-gray-300">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="min-w-[60px]">
+                                {gradePoints.map(gp => (
+                                  <SelectItem key={gp.grade} value={gp.grade} className="text-xs">
+                                    {gp.grade}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calculate and Display GPA */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    onClick={calculateGpa}
+                    disabled={isCalculating}
+                    className="flex-1 btn-white-primary py-3 text-lg font-medium"
+                  >
+                    {isCalculating ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Calculator className="w-5 h-5 mr-2" />
+                        Calculate Current GPA
+                      </>
+                    )}
+                  </Button>
+
+                  {gpa !== null && (
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg p-6 text-center min-w-[200px]"
+                    >
+                      <div className="flex items-center justify-center mb-2">
+                        <Award className="w-6 h-6 mr-2" />
+                        <span className="text-sm font-medium">Current GPA</span>
+                      </div>
+                      <div className="text-3xl font-bold">{gpa.toFixed(2)}</div>
+                      <div className="text-sm opacity-90">
+                        {gpa >= 4.5 ? "Excellent!" : gpa >= 3.5 ? "Good!" : gpa >= 2.5 ? "Average" : "Needs Improvement"}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        )}
 
       {/* Course Edit Modal */}
-      {showEditModal && selection && ( // Ensure selection is not null when opening modal
         <CourseEditModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
-          courses={courses}
-          originalCourses={originalCourses}
+          courses={originalCourses}
           onSave={handleSaveEdits}
-          selection={{
-            programId: selection.programId,
-            academicYear: selection.academicYear,
-            semester: selection.semester,
-          }}
+          programName={selection?.programName || ''}
+          year={selection?.academicYear || 1}
+          semester={selection?.semester || 1}
         />
-      )}
 
       {/* Feedback Modal */}
       {showFeedbackModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-md"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-caluu-blue-dark">Report an Issue</h2>
-
-            <div className="mb-3 sm:mb-4">
-              <label htmlFor="issueCategory" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                Select the issue:
-              </label>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Report an Issue</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="issue">Issue Type</Label>
               <select
-                id="issueCategory"
+                    id="issue"
                 value={feedbackIssue}
                 onChange={(e) => setFeedbackIssue(e.target.value)}
-                className="form-select text-sm sm:text-base w-full"
-              >
-                <option value="">-- Choose an issue --</option>
-                <option value="incomplete">Incomplete Courses</option>
-                <option value="wrong_credit">Wrong Credit</option>
-                <option value="typing_error">Typing Error</option>
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select an issue</option>
+                    <option value="missing-course">Missing Course</option>
+                    <option value="wrong-credits">Wrong Credits</option>
+                    <option value="wrong-course">Wrong Course</option>
+                    <option value="other">Other</option>
               </select>
             </div>
-
-            <div className="mb-4 sm:mb-6">
-              <label htmlFor="issueDescription" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                Please describe the issue:
-              </label>
+                <div>
+                  <Label htmlFor="description">Description</Label>
               <textarea
-                id="issueDescription"
+                    id="description"
                 value={feedbackDescription}
                 onChange={(e) => setFeedbackDescription(e.target.value)}
-                placeholder="Additional details..."
-                className="form-input min-h-[80px] sm:min-h-[100px] text-sm sm:text-base w-full"
-              ></textarea>
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="Please describe the issue..."
+                  />
             </div>
-
-            <div className="flex justify-end space-x-2 sm:space-x-3">
+                <div className="flex gap-2">
               <Button
+                    onClick={() => setShowFeedbackModal(false)}
                 variant="outline"
-                onClick={() => setShowFeedbackModal(false)}
-                className="text-sm sm:text-base"
+                    className="flex-1"
               >
                 Cancel
               </Button>
               <Button
-                onClick={submitFeedback}
-                className="bg-caluu-blue hover:bg-caluu-blue-light text-sm sm:text-base"
+                    onClick={() => {/* Handle feedback submission */}}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
-                Submit Feedback
+                    Submit
               </Button>
+                </div>
+              </div>
             </div>
-
-          </motion.div>
         </div>
       )}
-
-      {/* Add copyright section */}
-      <motion.div
-        className="mt-4 text-center text-white/60 text-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.8 }}
-      >
-        <p>&copy; 2025 Kodin Softwares |{" "}
-          <Button
-            onClick={() => navigate("/selection")}
-            className="text-white hover:underline bg-transparent p-0 h-auto"
-            variant="ghost"
-          >
-            back
-          </Button>
-          {" "} | {" "}
-          <button
-            onClick={() => window.open('https://imancharlie.pythonanywhere.com', '_blank')}
-            className="text-white hover:underline"
-          >
-            Visit us
-          </button>
-        </p>
-      </motion.div>
+      </div>
     </div>
-    </>  // Add the closing fragment here
+    </>
    );
 };
 
