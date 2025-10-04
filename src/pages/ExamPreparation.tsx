@@ -41,15 +41,15 @@ const ExamPreparation = () => {
   });
   const [userCount, setUserCount] = useState(0);
 
-  // Sharing message template
-  const shareMessage = `Hello friend! Official UDSM UE timetable for semester 2 2024-2025 is out exams will start 2 July 2025. I hope you have it already and you have checked if there is no collisions of exams if not yet, download it through ${window.location.origin}/udsm-timetable Caluu is an academic best friend tool for us UDSM students it also helps with GPA planning, tracking and supervision. Your Academics needs you and your friends needs you more kindly share with your friends to show real love and care to their future #NomoreAris3suprises`;
-  const careMessage = "📚 Hey! I found this amazing tool with our UDSM timetable and GPA planning features. Since I care about your success too, I thought you should have access to it! 💪📚";
+  const shareMessage = `Hello friend! The UDSM UE timetable for semester 2 (2024–2025) has been updated to fix reported issues like exam collisions and duplicates.UE is around the corner, time is out. If you had any problems, recheck now and report if the issue still persist.CRs and All students  must cross-check the updated timetable today and confirm it's correct. Report any issues ASAP to EXCOM ACADEMIC,any delay may end up on more serious problems. Download the improved one at ${window.location.origin}/udsm-timetable. Caluu helps you plan and track your GPA too! Share with friends – sharing is caring. #NomoreAris3suprises`; 
+
+const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues like collisions and other suggested changes. Please check yours carefully and make sure everything is fine. If you still see any problems, report them immediately — we’ve got less than 3 days to sort things out! Don’t forget to share with friends too. This tool also helps with GPA planning and tracking. Caluu,your academic Best friend💪📚";
 
   // Fetch user count
   useEffect(() => {
     const fetchUserCount = async () => {
       try {
-        const response = await fetch('https://caluu.pythonanywhere.com/api/admin/dashboard/');
+        const response = await fetch('https://timetable.udsm.ac.tz/');
         const data = await response.json();
         setUserCount(data.counts.user_count);
       } catch (error) {
@@ -87,7 +87,7 @@ const ExamPreparation = () => {
       // Simulate a small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      window.open('https://caluu.pythonanywhere.com/api/timetable/', '_blank');
+      window.open('https://timetable.udsm.ac.tz/', '_blank');
       toast.success('Timetable downloaded successfully!');
       
       // Show GPA prompt after 3 seconds
@@ -371,7 +371,7 @@ const ExamPreparation = () => {
                 Amazing! You're Prepared! 🎉
               </h3>
               <p className="text-sm sm:text-base text-gray-600 mb-6">
-                Since you're already on top of your GPA planning, why not help your friends who might be struggling? Show them you care by sharing this life-changing tool!
+                Since you're already on top of your Academic planning, why not help your friends who might be not aware of the Examination timetable updates? Show them you care by sharing this life-changing platform!
               </p>
               
               <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
@@ -430,7 +430,7 @@ const ExamPreparation = () => {
                 Share the Timetable! 📚
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
-                Your friends need this official UDSM timetable too. Help them stay organized and prepared for exams by sharing this tool with them!
+                Your friends need this official updated UDSM timetable too. Help them stay organized and prepared for exams by sharing this tool with them!
               </p>
               
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-2 sm:p-4 rounded-lg mb-4 sm:mb-6 text-left border border-blue-200">
