@@ -119,10 +119,13 @@ const Dashboard: React.FC = () => {
 
   // Fetch user details
   useEffect(() => {
-    if (user && !user.first_name) {
-      fetchUserBasicDetails().catch(() => {});
-    }
-  }, [user, fetchUserBasicDetails]);
+    // Note: fetchUserBasicDetails endpoint doesn't exist in backend
+    // User data should be available from login response
+    console.log('Dashboard - Current user data:', user);
+    // if (user && !user.first_name) {
+    //   fetchUserBasicDetails().catch(() => {});
+    // }
+  }, [user]);
 
   // Fetch slides from backend
   const { data: slidesData, isLoading: slidesLoading, error: slidesError } = useQuery({
@@ -501,9 +504,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           
-          {/* Quotes Ticker */}
+          {/* Quotes Ticker - reserve consistent height to prevent layout shift */}
           <div
-            className="mt-4 select-none"
+            className="mt-4 select-none min-h-20 md:min-h-24"
             onMouseEnter={() => setQuotePaused(true)}
             onMouseLeave={() => setQuotePaused(false)}
           >

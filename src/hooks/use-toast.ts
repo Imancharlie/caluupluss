@@ -181,9 +181,24 @@ function useToast() {
     }
   }, [state])
 
+  const toastSuccess = (props: Omit<Toast, "variant">) => {
+    return toast({ ...props, variant: "success" })
+  }
+
+  const toastError = (props: Omit<Toast, "variant">) => {
+    return toast({ ...props, variant: "destructive" })
+  }
+
+  const toastWarning = (props: Omit<Toast, "variant">) => {
+    return toast({ ...props, variant: "warning" })
+  }
+
   return {
     ...state,
     toast,
+    toastSuccess,
+    toastError,
+    toastWarning,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }

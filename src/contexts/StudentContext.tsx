@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import type { AxiosError } from 'axios';
 import academicApi, { StudentProfile, University, College, Program, Course, StudentCourse, GPAResponse } from '@/services/academicApi';
 
@@ -73,6 +73,8 @@ interface StudentContextType {
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 export function StudentProvider({ children }: { children: React.ReactNode }) {
+  const { toast, toastSuccess, toastError } = useToast();
+  
   // Data states
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [universities, setUniversities] = useState<University[]>([]);
@@ -139,7 +141,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setStudentProfile(null);
       } else {
         console.error('Error loading student profile:', error);
-        toast.error('Failed to load student profile');
+        toastError({ title: 'Failed to load student profile' });
       }
     } finally {
       setProfileLoading(false);
@@ -154,7 +156,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setUniversities(extractArray<University>(data as unknown));
     } catch (error) {
       console.error('Error loading universities:', error);
-      toast.error('Failed to load universities');
+      toastError({ title: 'Failed to load universities' });
     } finally {
       setUniversitiesLoading(false);
     }
@@ -168,7 +170,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setColleges(extractArray<College>(data as unknown));
     } catch (error) {
       console.error('Error loading colleges:', error);
-      toast.error('Failed to load colleges');
+      toastError({ title: 'Failed to load colleges' });
     } finally {
       setCollegesLoading(false);
     }
@@ -182,7 +184,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setPrograms(extractArray<Program>(data as unknown));
     } catch (error) {
       console.error('Error loading programs:', error);
-      toast.error('Failed to load programs');
+      toastError({ title: 'Failed to load programs' });
     } finally {
       setProgramsLoading(false);
     }
@@ -196,7 +198,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setCourses(extractArray<Course>(data as unknown));
     } catch (error) {
       console.error('Error loading courses:', error);
-      toast.error('Failed to load courses');
+      toastError({ title: 'Failed to load courses' });
     } finally {
       setCoursesLoading(false);
     }
@@ -235,7 +237,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setStudentCourses(normalized);
     } catch (error) {
       console.error('Error loading student courses:', error);
-      toast.error('Failed to load student courses');
+      toastError({ title: 'Failed to load student courses' });
     }
   }, [studentProfile]);
 
@@ -264,10 +266,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await academicApi.createStudentProfile(profileData);
       setStudentProfile(profile);
-      toast.success('Student profile created successfully!');
+      toastSuccess({ title: 'Student profile created successfully!' });
     } catch (error) {
       console.error('Error creating student profile:', error);
-      toast.error('Failed to create student profile');
+      toastError({ title: 'Failed to create student profile' });
       throw error;
     } finally {
       setLoading(false);
@@ -286,10 +288,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await academicApi.updateStudentProfile(profileData);
       setStudentProfile(profile);
-      toast.success('Student profile updated successfully!');
+      toastSuccess({ title: 'Student profile updated successfully!' });
     } catch (error) {
       console.error('Error updating student profile:', error);
-      toast.error('Failed to update student profile');
+      toastError({ title: 'Failed to update student profile' });
       throw error;
     } finally {
       setLoading(false);
@@ -301,10 +303,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     try {
       await academicApi.addCourse(courseId);
       await loadStudentCourses(); // Reload student courses
-      toast.success('Course added successfully!');
+      toastSuccess({ title: 'Course added successfully!' });
     } catch (error) {
       console.error('Error adding course:', error);
-      toast.error('Failed to add course');
+      toastError({ title: 'Failed to add course' });
       throw error;
     }
   };
@@ -314,10 +316,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     try {
       await academicApi.removeCourse(courseId);
       await loadStudentCourses(); // Reload student courses
-      toast.success('Course removed successfully!');
+      toastSuccess({ title: 'Course removed successfully!' });
     } catch (error) {
       console.error('Error removing course:', error);
-      toast.error('Failed to remove course');
+      toastError({ title: 'Failed to remove course' });
       throw error;
     }
   };
@@ -328,10 +330,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       await academicApi.updateCourseGrade(courseId, grade);
       await loadStudentCourses(); // Reload student courses
       await loadGPA(); // Reload GPA data
-      toast.success('Grade updated successfully!');
+      toastSuccess({ title: 'Grade updated successfully!' });
     } catch (error) {
       console.error('Error updating course grade:', error);
-      toast.error('Failed to update grade');
+      toastError({ title: 'Failed to update grade' });
       throw error;
     }
   };
@@ -343,7 +345,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       return extractArray<StudentCourse>(data);
     } catch (error) {
       console.error('Error fetching courses by semester:', error);
-      toast.error('Failed to fetch courses');
+      toastError({ title: 'Failed to fetch courses' });
       throw error;
     }
   };
@@ -359,7 +361,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       return extractArray<StudentCourse>(data);
     } catch (error) {
       console.error('Error fetching filtered courses:', error);
-      toast.error('Failed to fetch courses');
+      toastError({ title: 'Failed to fetch courses' });
       throw error;
     }
   };
@@ -370,10 +372,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       await academicApi.generateTargetGPA(targetGPA);
       await loadStudentCourses(); // Reload student courses
       await loadGPA(); // Reload GPA data
-      toast.success('Target grades generated successfully!');
+      toastSuccess({ title: 'Target grades generated successfully!' });
     } catch (error) {
       console.error('Error generating target GPA:', error);
-      toast.error('Failed to generate target grades');
+      toastError({ title: 'Failed to generate target grades' });
       throw error;
     }
   };
@@ -384,10 +386,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       await academicApi.resetGrades();
       await loadStudentCourses(); // Reload student courses
       await loadGPA(); // Reload GPA data
-      toast.success('Grades reset successfully!');
+      toastSuccess({ title: 'Grades reset successfully!' });
     } catch (error) {
       console.error('Error resetting grades:', error);
-      toast.error('Failed to reset grades');
+      toastError({ title: 'Failed to reset grades' });
       throw error;
     }
   };

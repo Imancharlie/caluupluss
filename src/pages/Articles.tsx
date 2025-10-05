@@ -35,13 +35,14 @@ import {
   ArticleFilters 
 } from '@/services/articleService';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 // Tag type from backend: can be a string or an object with name/slug
 type TagLike = string | { name?: string; slug?: string };
 
 const Articles: React.FC = () => {
   const navigate = useNavigate();
+  const { toast, toastSuccess, toastError } = useToast();
   const [filters, setFilters] = useState<ArticleFilters>({
     page: 1,
     page_size: 12,
@@ -132,13 +133,13 @@ const Articles: React.FC = () => {
       const a = articles.find(a => String(a.id) === String(articleId));
       if (a) obj[String(articleId)] = a;
       localStorage.setItem(key, JSON.stringify(obj));
-      toast.success('Saved successfully');
+      toastSuccess({ title: 'Saved successfully' });
       // Optionally still inform backend if you want a server-side saved list
       // await toggleSave(articleId);
       // refetch();
     } catch (error) {
       console.error('Failed to save offline:', error);
-      toast.error('Failed to save');
+      toastError({ title: 'Failed to save' });
     }
   };
 
@@ -154,7 +155,7 @@ const Articles: React.FC = () => {
       } else {
         // Fallback to copying to clipboard
         await navigator.clipboard.writeText(window.location.href);
-        toast.success('Link copied to clipboard!');
+        toastSuccess({ title: 'Link copied to clipboard!' });
       }
       await shareArticle(article.id, 'web');
       refetch();
@@ -334,7 +335,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     }
   })();
   return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
+    <Card 
+      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 group cursor-pointer"
+      onClick={onOpen}
+    >
       {viewMode === 'grid' ? (
         <>
           <div className="relative overflow-hidden rounded-t-xl">
@@ -359,21 +363,19 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                 size="icon"
                 variant="secondary"
                 className="h-8 w-8 bg-white/90 hover:bg-white"
-                onClick={onSave}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave();
+                }}
               >
                 <Bookmark className={`w-4 h-4 ${article.is_saved ? 'fill-current text-caluu-blue' : ''}`} />
               </Button>
             </div>
           </div>
           <CardContent className="p-6">
-            <button
-              className="text-left w-full"
-              onClick={onOpen}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors">
-                {article.title || 'Untitled'}
-              </h3>
-            </button>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-caluu-blue transition-colors">
+              {article.title || 'Untitled'}
+            </h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
               {article.excerpt || ''}
             </p>
@@ -438,7 +440,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
                   size="icon"
                   variant="ghost"
                   className="h-8 w-8"
-                  onClick={onShare}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare();
+                  }}
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>

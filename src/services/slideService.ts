@@ -105,7 +105,7 @@ export async function fetchSlides(): Promise<Slide[]> {
 export async function createSlide(slideData: Partial<Slide>): Promise<Slide> {
   try {
     const { data } = await api.post('/slides/', slideData);
-    toast.success('Slide created successfully');
+    toastSuccess({ title: 'Slide created successfully' });
   return data;
   } catch (error) {
     console.error('Failed to create slide:', error);
@@ -117,7 +117,7 @@ export async function createSlide(slideData: Partial<Slide>): Promise<Slide> {
 export async function updateSlide(id: string | number, slideData: Partial<Slide>): Promise<Slide> {
   try {
     const { data } = await api.put(`/slides/${id}/`, slideData);
-    toast.success('Slide updated successfully');
+    toastSuccess({ title: 'Slide updated successfully' });
   return data;
   } catch (error) {
     console.error('Failed to update slide:', error);
@@ -129,7 +129,7 @@ export async function updateSlide(id: string | number, slideData: Partial<Slide>
 export async function deleteSlide(id: string | number): Promise<void> {
   try {
     await api.delete(`/slides/${id}/`);
-    toast.success('Slide deleted successfully');
+    toastSuccess({ title: 'Slide deleted successfully' });
   } catch (error) {
     console.error('Failed to delete slide:', error);
     toast.error('Failed to delete slide');

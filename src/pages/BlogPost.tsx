@@ -80,7 +80,7 @@ const BlogPostPage = () => {
         const result = await feedbackService.submitFeedback(testFeedback);
         console.log('Feedback submission result:', result);
         
-        toast.success('Feedback service is working correctly!');
+        toastSuccess({ title: 'Feedback service is working correctly!' });
       } catch (error) {
         console.error('Feedback service test failed:', error);
         toast.error('Feedback service test failed. Check console for details.');

@@ -57,7 +57,7 @@ const FeedbackSection = ({ postId, programId, academicYear }: FeedbackSectionPro
       setSubmitStatus('success');
       setTitle('');
       setDescription('');
-      toast.success('Thank you for your feedback!');
+      toastSuccess({ title: 'Thank you for your feedback!' });
     } catch (error: any) {
       setSubmitStatus('error');
       toast.error('Failed to submit feedback. Please try again.');

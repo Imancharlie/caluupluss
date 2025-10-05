@@ -81,7 +81,7 @@ const CourseEditModal: React.FC<CourseEditModalProps> = ({
       setEditedCourses(prev => [...prev, course]);
       setNewCourse({ code: '', name: '', credits: 0, type: 'core' });
       setShowAddForm(false);
-      toast.success('Course added!');
+      toastSuccess({ title: 'Course added!' });
     }
   };
 
@@ -106,7 +106,7 @@ const CourseEditModal: React.FC<CourseEditModalProps> = ({
       setEditingCourse(null);
       setNewCourse({ code: '', name: '', credits: 0, type: 'core' });
       setShowAddForm(false);
-      toast.success('Course updated!');
+      toastSuccess({ title: 'Course updated!' });
     }
   };
 
@@ -118,7 +118,7 @@ const CourseEditModal: React.FC<CourseEditModalProps> = ({
 
   const handleDeleteCourse = (courseId: string) => {
     setEditedCourses(prev => prev.filter(c => c.id !== courseId));
-    toast.success('Course removed!');
+    toastSuccess({ title: 'Course removed!' });
   };
 
   const handleSave = () => {

@@ -13,10 +13,14 @@ const Profile: React.FC = () => {
     .filter(Boolean)
     .join(' ') || user?.display_name || user?.username || 'User';
   React.useEffect(() => {
-    if (!user?.first_name || !user?.email || !user?.phone_number) {
-      fetchUserBasicDetails().catch(() => {});
-    }
-  }, [user, fetchUserBasicDetails]);
+    console.log('Profile page - Current user data:', user);
+    console.log('Profile page - Student profile data:', studentProfile);
+    // Note: fetchUserBasicDetails endpoint doesn't exist in backend
+    // User data should be available from login response
+    // if (!user?.first_name || !user?.email || !user?.phone_number) {
+    //   fetchUserBasicDetails().catch(() => {});
+    // }
+  }, [user, studentProfile]);
   const initials = displayName
     .split(' ')
     .filter(Boolean)

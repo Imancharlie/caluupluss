@@ -104,7 +104,7 @@ export async function fetchArticleCategories(): Promise<ArticleCategory[]> {
 export async function toggleLike(articleId: string | number): Promise<{ is_liked: boolean; likes: number }> {
   try {
     const { data } = await api.post(`/articles/${articleId}/like/`);
-    toast.success(data.is_liked ? 'Article liked!' : 'Article unliked');
+    toastSuccess({ title: data.is_liked ? 'Article liked!' : 'Article unliked' });
     return data;
   } catch (error) {
     console.error('Failed to toggle like:', error);
@@ -117,7 +117,7 @@ export async function toggleLike(articleId: string | number): Promise<{ is_liked
 export async function toggleSave(articleId: string | number): Promise<{ is_saved: boolean }> {
   try {
     const { data } = await api.post(`/articles/${articleId}/save/`);
-    toast.success(data.is_saved ? 'Article saved!' : 'Article removed from saved');
+    toastSuccess({ title: data.is_saved ? 'Article saved!' : 'Article removed from saved' });
     return data;
   } catch (error) {
     console.error('Failed to toggle save:', error);
@@ -130,7 +130,7 @@ export async function toggleSave(articleId: string | number): Promise<{ is_saved
 export async function shareArticle(articleId: string | number, platform: string): Promise<{ share_count: number }> {
   try {
     const { data } = await api.post(`/articles/${articleId}/share/`, { platform });
-    toast.success('Article shared successfully!');
+    toastSuccess({ title: 'Article shared successfully!' });
     return data;
   } catch (error) {
     console.error('Failed to share article:', error);

@@ -142,7 +142,7 @@ export async function fetchNotifications(params?: { page?: number; page_size?: n
 export async function markAsRead(id: string | number): Promise<void> {
   try {
     await api.post(`/notifications/${id}/read/`);
-    toast.success('Notification marked as read');
+    toastSuccess({ title: 'Notification marked as read' });
   } catch (error) {
     console.warn('Failed to mark notification as read:', error);
     toast.error('Failed to mark notification as read');
@@ -153,7 +153,7 @@ export async function markAsRead(id: string | number): Promise<void> {
 export async function markAllAsRead(): Promise<void> {
   try {
     await api.post('/notifications/mark-all-read/');
-    toast.success('All notifications marked as read');
+    toastSuccess({ title: 'All notifications marked as read' });
   } catch (error) {
     console.warn('Failed to mark all notifications as read:', error);
     toast.error('Failed to mark all notifications as read');
@@ -164,7 +164,7 @@ export async function markAllAsRead(): Promise<void> {
 export async function deleteNotification(id: string | number): Promise<void> {
   try {
     await api.delete(`/notifications/${id}/`);
-    toast.success('Notification deleted');
+    toastSuccess({ title: 'Notification deleted' });
   } catch (error) {
     console.warn('Failed to delete notification:', error);
     toast.error('Failed to delete notification');

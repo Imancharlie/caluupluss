@@ -395,7 +395,7 @@ const AdminPanel = () => {
                         return;
                       }
                       const created = await academicApi.createUniversity({ name: uniName.trim(), country: uniCountry.trim() });
-                      toast.success(`University created: ${created.name}`);
+                      toastSuccess({ title: `University created: ${created.name}` });
                       setUniName('');
                       setUniCountry('');
                     } catch (err: any) {
@@ -434,7 +434,7 @@ const AdminPanel = () => {
                         return;
                       }
                       const created = await academicApi.createCollege({ name: collegeName.trim(), university: collegeUniversityId.trim() });
-                      toast.success(`College created: ${created.name}`);
+                      toastSuccess({ title: `College created: ${created.name}` });
                       setCollegeName('');
                       setCollegeUniversityId('');
                     } catch (err: any) {

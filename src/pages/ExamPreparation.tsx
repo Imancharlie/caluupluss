@@ -88,7 +88,7 @@ const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       window.open('https://timetable.udsm.ac.tz/', '_blank');
-      toast.success('Timetable downloaded successfully!');
+      toastSuccess({ title: 'Timetable downloaded successfully!' });
       
       // Show GPA prompt after 3 seconds
       setTimeout(() => {
@@ -108,12 +108,12 @@ const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues
     switch (platform) {
       case 'whatsapp':
         window.open(`https://wa.me/?text=${encodeURIComponent(fullMessage)}`, '_blank');
-        toast.success('Shared on WhatsApp! 💚');
+        toastSuccess({ title: 'Shared on WhatsApp! 💚' });
         break;
       case 'copy':
         try {
           await navigator.clipboard.writeText(fullMessage);
-          toast.success('Message copied to clipboard! 📋');
+          toastSuccess({ title: 'Message copied to clipboard! 📋' });
         } catch (err) {
           const textArea = document.createElement('textarea');
           textArea.value = fullMessage;
@@ -121,12 +121,12 @@ const careMessage = "📚 Hey! The UDSM timetable has been updated to fix issues
           textArea.select();
           document.execCommand('copy');
           document.body.removeChild(textArea);
-          toast.success('Message copied to clipboard! 📋');
+          toastSuccess({ title: 'Message copied to clipboard! 📋' });
         }
         break;
       case 'sms':
         window.open(`sms:?body=${encodeURIComponent(fullMessage)}`, '_blank');
-        toast.success('SMS app opened! 📱');
+        toastSuccess({ title: 'SMS app opened! 📱' });
         break;
       default:
         break;

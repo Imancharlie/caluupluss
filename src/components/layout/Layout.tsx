@@ -82,7 +82,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
-      darkMode ? 'bg-caluu-blue-dark' : 'bg-caluu-blue-dark'
+      darkMode ? 'bg-caluu-blue-dark' : 'bg-white'
     }`}>
       {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (

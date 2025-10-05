@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Helmet } from "react-helmet-async";
@@ -90,7 +90,7 @@ interface WorkplaceCourse {
 
 const GpaCalculator = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast, toastSuccess } = useToast();
   const { 
     studentProfile,
     studentCourses,
@@ -110,6 +110,9 @@ const GpaCalculator = () => {
   const [targetGpa, setTargetGpa] = useState<string>("");
   const [isGeneratingGrades, setIsGeneratingGrades] = useState(false);
   const [activeTab, setActiveTab] = useState("calculate");
+  const [targetGpaSet, setTargetGpaSet] = useState<number | null>(null);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
+  const [userEditedGrades, setUserEditedGrades] = useState<Set<string>>(new Set());
 
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -122,8 +125,14 @@ const GpaCalculator = () => {
   const [showNoCoursesModal, setShowNoCoursesModal] = useState(false);
   const [showNoProfileModal, setShowNoProfileModal] = useState(false);
   const [isSavingCourses, setIsSavingCourses] = useState(false);
+  const [targetGpaValidation, setTargetGpaValidation] = useState<{
+    isAchievable: boolean;
+    message: string;
+    maxPossibleGPA: number;
+  } | null>(null);
+  const gradesSectionRef = useRef<HTMLDivElement>(null);
 
-  const gradePoints: GradePoint[] = [
+  const gradePoints: GradePoint[] = useMemo(() => [
     { grade: "A", points: 5.0 },
     { grade: "B+", points: 4.0 },
     { grade: "B", points: 3.0 },
@@ -131,7 +140,76 @@ const GpaCalculator = () => {
     { grade: "D", points: 1.0 },
     { grade: "E", points: 0.0 },
     { grade: "F", points: 0.0 },
-  ];
+  ], []);
+
+  // Validation function to check if target GPA is achievable
+  const validateTargetGPA = useCallback((targetGpaValue: number, currentGrades: GradeEntry[] = grades) => {
+    const totalCredits = originalCourses.reduce((sum, course) => sum + course.credits, 0);
+    const totalPointsNeeded = targetGpaValue * totalCredits;
+    
+    // Calculate points from user-edited grades (fixed grades)
+    let totalPointsFromFixed = 0;
+    let totalCreditsFixed = 0;
+    const editableCourses: Course[] = [];
+    
+    originalCourses.forEach(course => {
+      if (userEditedGrades.has(course.id)) {
+        const existingGrade = currentGrades.find(g => g.courseId === course.id);
+        const gradePoint = gradePoints.find(gp => gp.grade === existingGrade?.grade)?.points || 0;
+        totalPointsFromFixed += gradePoint * course.credits;
+        totalCreditsFixed += course.credits;
+      } else {
+        editableCourses.push(course);
+      }
+    });
+    
+    // Calculate maximum possible GPA with current fixed grades
+    const maxPossiblePoints = totalPointsFromFixed + (editableCourses.reduce((sum, course) => sum + course.credits, 0) * 5.0);
+    const maxPossibleGPA = Math.floor((maxPossiblePoints / totalCredits) * 10) / 10;
+    
+    // Calculate minimum possible GPA with current fixed grades
+    const minPossiblePoints = totalPointsFromFixed + (editableCourses.reduce((sum, course) => sum + course.credits, 0) * 0.0);
+    const minPossibleGPA = Math.floor((minPossiblePoints / totalCredits) * 10) / 10;
+    
+    const isAchievable = targetGpaValue >= minPossibleGPA && targetGpaValue <= maxPossibleGPA;
+    
+    let message = "";
+    if (!isAchievable) {
+      if (targetGpaValue > maxPossibleGPA) {
+        message = `Target GPA ${targetGpaValue.toFixed(1)} is impossible to achieve. Maximum possible GPA with current grades is ${maxPossibleGPA.toFixed(1)}.`;
+      } else if (targetGpaValue < minPossibleGPA) {
+        message = `Target GPA ${targetGpaValue.toFixed(1)} is impossible to achieve. Minimum possible GPA with current grades is ${minPossibleGPA.toFixed(1)}.`;
+      }
+    } else {
+      message = `Target GPA ${targetGpaValue.toFixed(1)} is achievable with current course setup.`;
+    }
+    
+    return {
+      isAchievable,
+      message,
+      maxPossibleGPA,
+      minPossibleGPA,
+      totalPointsNeeded,
+      remainingPoints: totalPointsNeeded - totalPointsFromFixed,
+      editableCredits: editableCourses.reduce((sum, course) => sum + course.credits, 0)
+    };
+  }, [originalCourses, userEditedGrades, grades, gradePoints]);
+
+  // Check if target GPA is achievable whenever grades change
+  useEffect(() => {
+    if (targetGpaSet && grades.length > 0) {
+      const validation = validateTargetGPA(targetGpaSet);
+      setTargetGpaValidation(validation);
+      
+      if (!validation.isAchievable) {
+        toast({
+          title: "Target GPA Not Achievable",
+          description: validation.message,
+          variant: "default"
+        });
+      }
+    }
+  }, [grades, targetGpaSet, userEditedGrades, originalCourses, toast, validateTargetGPA]);
 
 
   const loadCoursesFromWorkplace = useCallback(async (selection: Selection) => {
@@ -305,7 +383,15 @@ const GpaCalculator = () => {
       });
 
       // Save to backend
-      await academicApi.saveCoursesBatch(formattedCourses);
+      console.log('Calling academicApi.saveCoursesBatch with:', formattedCourses);
+      
+      // Note: The batch endpoint is not yet implemented in the backend
+      // For now, we'll just update the local state and show a message
+      console.log('Note: Backend batch endpoint not yet implemented, updating local state only');
+      
+      // TODO: Implement actual backend save when endpoint is available
+      // const response = await academicApi.saveCoursesBatch(formattedCourses);
+      // console.log('Backend response:', response);
 
       // Update local state
       setOriginalCourses(editedCourses);
@@ -321,16 +407,15 @@ const GpaCalculator = () => {
       setGrades(updatedGrades);
       setGpa(null);
 
-      toast({
-        title: "Courses Saved!",
-        description: "Your course changes have been saved successfully.",
-        variant: "default"
+      toastSuccess({
+        title: "Courses Updated!",
+        description: "Your course changes have been updated locally. Note: Backend sync will be available soon."
       });
     } catch (error) {
-      console.error("Error saving course edits:", error);
+      console.error("Error updating course edits:", error);
       toast({
-        title: "Save Issue",
-        description: "Failed to save course changes. Please try again.",
+        title: "Update Issue",
+        description: "Failed to update course changes. Please try again.",
         variant: "warning"
       });
     } finally {
@@ -346,6 +431,9 @@ const GpaCalculator = () => {
       );
       return newGrades;
     });
+    
+    // Track user-edited grades for smart regeneration
+    setUserEditedGrades(prev => new Set([...prev, courseId]));
     setGpa(null); // Reset GPA so user can recalculate
   };
 
@@ -368,12 +456,13 @@ const GpaCalculator = () => {
       });
       
       const calculatedGpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
-      setGpa(calculatedGpa);
+      // Truncate to 1 decimal place (e.g., 4.78 becomes 4.7)
+      const truncatedGpa = Math.floor(calculatedGpa * 10) / 10;
+      setGpa(truncatedGpa);
       
-      toast({
+      toastSuccess({
         title: "GPA Calculated!",
-        description: `Your GPA is ${calculatedGpa.toFixed(2)}`,
-        variant: "default"
+        description: `Your GPA is ${truncatedGpa.toFixed(1)}`
       });
     } catch (error) {
       console.error("Error calculating GPA:", error);
@@ -387,6 +476,27 @@ const GpaCalculator = () => {
     }
   };
 
+  // Helper function to calculate GPA from grades array
+  const calculateGpaFromGrades = (gradesArray: GradeEntry[]) => {
+    if (gradesArray.length === 0) return 0;
+    
+    let totalPoints = 0;
+    let totalCredits = 0;
+    
+    gradesArray.forEach(gradeEntry => {
+      const course = originalCourses.find(c => c.id === gradeEntry.courseId);
+      if (course) {
+        const gradePoint = gradePoints.find(gp => gp.grade === gradeEntry.grade)?.points || 0;
+        totalPoints += gradePoint * course.credits;
+        totalCredits += course.credits;
+      }
+    });
+    
+    const gpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
+    // Truncate to 1 decimal place (e.g., 4.78 becomes 4.7)
+    return Math.floor(gpa * 10) / 10;
+  };
+
   const generateTargetGrades = () => {
     if (!targetGpa || parseFloat(targetGpa) < 0 || parseFloat(targetGpa) > 5) {
       toast({
@@ -397,79 +507,204 @@ const GpaCalculator = () => {
       return;
     }
 
+    const targetGpaValue = parseFloat(targetGpa);
+    
+    // Validate if target GPA is achievable before proceeding
+    const validation = validateTargetGPA(targetGpaValue);
+    if (!validation.isAchievable) {
+      toast({
+        title: "Target GPA Not Achievable",
+        description: validation.message,
+        variant: "default"
+      });
+      return;
+    }
+
     setIsGeneratingGrades(true);
     try {
-      const targetGpaValue = parseFloat(targetGpa);
+      setTargetGpaSet(targetGpaValue);
+      setIsEditingTarget(false);
       
-      // Improved target grade generation algorithm
-      const totalCredits = originalCourses.reduce((sum, course) => sum + course.credits, 0);
-      const totalPointsNeeded = targetGpaValue * totalCredits;
-      
-      // Sort courses by credits (descending) for better distribution
-      const sortedCourses = [...originalCourses].sort((a, b) => b.credits - a.credits);
-      
+      // Smart regeneration: preserve user-edited grades
       const newGrades: GradeEntry[] = [];
-      let remainingPoints = totalPointsNeeded;
-      let remainingCredits = totalCredits;
+      const editableCourses: Course[] = [];
+      // Truncate target GPA for calculation
+      const truncatedTargetGPA = Math.floor(targetGpaValue * 10) / 10;
+      const totalPointsNeeded = truncatedTargetGPA * originalCourses.reduce((sum, course) => sum + course.credits, 0);
+      let totalCreditsEditable = 0;
+      let totalPointsFromFixed = 0;
       
-      for (let i = 0; i < sortedCourses.length; i++) {
-        const course = sortedCourses[i];
-        const isLastCourse = i === sortedCourses.length - 1;
-        
-        let targetPointsPerCredit: number;
-        
-        if (isLastCourse) {
-          // For the last course, use all remaining points
-          targetPointsPerCredit = remainingPoints / course.credits;
+      // First, handle user-edited grades (fixed)
+      originalCourses.forEach(course => {
+        if (userEditedGrades.has(course.id)) {
+          const existingGrade = grades.find(g => g.courseId === course.id);
+          const gradePoint = gradePoints.find(gp => gp.grade === existingGrade?.grade)?.points || 0;
+          totalPointsFromFixed += gradePoint * course.credits;
+          newGrades.push({
+            courseId: course.id,
+            grade: existingGrade?.grade || "A"
+          });
         } else {
-          // For other courses, calculate based on remaining points and credits
-          const remainingCourses = sortedCourses.length - i;
-          const averagePointsPerCredit = remainingPoints / remainingCredits;
+          editableCourses.push(course);
+          totalCreditsEditable += course.credits;
+        }
+      });
+      
+      // Calculate remaining points needed for editable courses
+      const remainingPoints = totalPointsNeeded - totalPointsFromFixed;
+      
+      if (editableCourses.length > 0) {
+        // Sort editable courses by credits (descending) for better distribution
+        const sortedEditableCourses = [...editableCourses].sort((a, b) => b.credits - a.credits);
+        
+        let remainingPointsForEditable = remainingPoints;
+        let remainingCreditsForEditable = totalCreditsEditable;
+        
+        // Use a more precise algorithm to ensure exact GPA matching with randomization
+        for (let i = 0; i < sortedEditableCourses.length; i++) {
+          const course = sortedEditableCourses[i];
+          const isLastCourse = i === sortedEditableCourses.length - 1;
           
-          // Add some variation to make it more realistic
-          const variation = (Math.random() - 0.5) * 0.5; // ±0.25 variation
-          targetPointsPerCredit = Math.max(0, Math.min(5, averagePointsPerCredit + variation));
+          let targetPointsPerCredit: number;
+          
+          if (isLastCourse) {
+            // For the last course, use all remaining points to ensure exact match
+            targetPointsPerCredit = remainingPointsForEditable / course.credits;
+          } else {
+            // For other courses, calculate based on remaining points and credits with randomization
+            const averagePointsPerCredit = remainingPointsForEditable / remainingCreditsForEditable;
+            
+            // Add moderate randomization for different distributions while maintaining accuracy
+            const randomVariation = (Math.random() - 0.5) * 0.6; // ±0.3 variation (reduced for accuracy)
+            const variationFactor = Math.random() * 0.4 + 0.1; // 0.1 to 0.5 (reduced range)
+            const randomAdjustment = randomVariation * variationFactor;
+            
+            targetPointsPerCredit = Math.max(0, Math.min(5, averagePointsPerCredit + randomAdjustment));
+          }
+          
+          // Find the closest grade to the target points per credit
+          let bestGrade = "A";
+          let bestDiff = Math.abs(5.0 - targetPointsPerCredit);
+          
+          gradePoints.forEach(gp => {
+            const diff = Math.abs(gp.points - targetPointsPerCredit);
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              bestGrade = gp.grade;
+            }
+          });
+          
+          const gradePointsValue = gradePoints.find(gp => gp.grade === bestGrade)?.points || 0;
+          const coursePoints = gradePointsValue * course.credits;
+          
+          newGrades.push({
+            courseId: course.id,
+            grade: bestGrade
+          });
+          
+          remainingPointsForEditable -= coursePoints;
+          remainingCreditsForEditable -= course.credits;
         }
         
-        // Find the closest grade to the target points per credit
-        let bestGrade = "A";
-        let bestDiff = Math.abs(5.0 - targetPointsPerCredit);
-        
-        gradePoints.forEach(gp => {
-          const diff = Math.abs(gp.points - targetPointsPerCredit);
-          if (diff < bestDiff) {
-            bestDiff = diff;
-            bestGrade = gp.grade;
+        // Final validation: check if the generated grades actually achieve the target GPA
+        const finalGPA = calculateGpaFromGrades(newGrades);
+        // Truncate target GPA for comparison
+        const truncatedTargetGPA = Math.floor(targetGpaValue * 10) / 10;
+        if (Math.abs(finalGPA - truncatedTargetGPA) > 0.01) {
+          // If not exact, try to adjust courses to get closer to target
+          console.log(`Generated GPA: ${finalGPA.toFixed(3)}, Target: ${targetGpaValue.toFixed(3)}`);
+          
+          // Calculate the points difference needed
+          const totalCredits = originalCourses.reduce((sum, course) => sum + course.credits, 0);
+          const targetPoints = truncatedTargetGPA * totalCredits;
+          const currentPoints = finalGPA * totalCredits;
+          const pointsDifference = targetPoints - currentPoints;
+          
+          // Find courses that can be adjusted (not user-edited)
+          const adjustableCourses = sortedEditableCourses.filter(course => !userEditedGrades.has(course.id));
+          
+          if (adjustableCourses.length > 0) {
+            // Sort by credits (descending) to adjust courses with more credits first
+            const sortedAdjustableCourses = [...adjustableCourses].sort((a, b) => b.credits - a.credits);
+            
+            let remainingDifference = pointsDifference;
+            
+            // Try to distribute the adjustment across multiple courses if needed
+            for (const course of sortedAdjustableCourses) {
+              if (Math.abs(remainingDifference) < 0.01) break;
+              
+              const courseGradeIndex = newGrades.findIndex(g => g.courseId === course.id);
+              if (courseGradeIndex >= 0) {
+                const currentGrade = newGrades[courseGradeIndex].grade;
+                const currentPointsPerCredit = gradePoints.find(gp => gp.grade === currentGrade)?.points || 0;
+                const pointsPerCreditAdjustment = remainingDifference / course.credits;
+                const newTargetPointsPerCredit = currentPointsPerCredit + pointsPerCreditAdjustment;
+                
+                // Find the best grade for the adjusted target
+                let adjustedGrade = currentGrade;
+                let adjustedDiff = Math.abs(currentPointsPerCredit - newTargetPointsPerCredit);
+                
+                gradePoints.forEach(gp => {
+                  const diff = Math.abs(gp.points - newTargetPointsPerCredit);
+                  if (diff < adjustedDiff) {
+                    adjustedDiff = diff;
+                    adjustedGrade = gp.grade;
+                  }
+                });
+                
+                // Update the course grade
+                newGrades[courseGradeIndex].grade = adjustedGrade;
+                
+                // Calculate how much of the difference this adjustment covered
+                const newPointsPerCredit = gradePoints.find(gp => gp.grade === adjustedGrade)?.points || 0;
+                const actualAdjustment = (newPointsPerCredit - currentPointsPerCredit) * course.credits;
+                remainingDifference -= actualAdjustment;
+              }
+            }
           }
-        });
-        
-        const gradePointsValue = gradePoints.find(gp => gp.grade === bestGrade)?.points || 0;
-        const coursePoints = gradePointsValue * course.credits;
-        
-        newGrades.push({
-          courseId: course.id,
-          grade: bestGrade
-        });
-        
-        remainingPoints -= coursePoints;
-        remainingCredits -= course.credits;
+        }
       }
       
       setGrades(newGrades);
       setGpa(null);
 
-      // Auto-scroll to the grades section
+      // Auto-scroll to the grades section after state updates
       setTimeout(() => {
-        const gradesSection = document.querySelector('[data-tab="target"] .space-y-3:last-child');
-        if (gradesSection) {
-          gradesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        console.log('Attempting to scroll to grades section...');
+        console.log('gradesSectionRef.current:', gradesSectionRef.current);
+        
+        if (gradesSectionRef.current) {
+          console.log('Scrolling using ref');
+          gradesSectionRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        } else {
+          console.log('Ref not found, trying CSS selectors...');
+          // Fallback: try to find the grades section using CSS selectors
+          const gradesSection = document.querySelector('[data-grades-section="true"]') ||
+                               document.querySelector('.space-y-3:last-child') ||
+                               document.querySelector('.space-y-3');
+          
+          console.log('Found grades section via CSS:', gradesSection);
+          
+          if (gradesSection) {
+            console.log('Scrolling using CSS selector');
+            gradesSection.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          } else {
+            console.log('No grades section found');
+          }
         }
-      }, 100);
+      }, 500); // Increased timeout to ensure DOM updates and animations complete
 
-      toast({
+      toastSuccess({
         title: "Grades Generated!",
-        description: `Target grades generated for GPA ${targetGpa}`,
-        variant: "default"
+        description: `New grade distribution generated for target GPA ${targetGpa}`
       });
 
     } catch (error) {
@@ -484,6 +719,16 @@ const GpaCalculator = () => {
     }
   };
 
+  const handleEditTarget = () => {
+    setIsEditingTarget(true);
+    setTargetGpa(targetGpaSet?.toString() || "");
+  };
+
+  const handleCancelEditTarget = () => {
+    setIsEditingTarget(false);
+    setTargetGpa("");
+  };
+
   const resetGradesHandler = () => {
     try {
       // Reset all grades to A locally
@@ -495,11 +740,13 @@ const GpaCalculator = () => {
       setGrades(resetGrades);
       setGpa(null);
       setTargetGpa("");
+      setTargetGpaSet(null);
+      setIsEditingTarget(false);
+      setUserEditedGrades(new Set());
       
-      toast({
+      toastSuccess({
         title: "Grades Reset",
-        description: "All grades have been reset to A",
-        variant: "default"
+        description: "All grades have been reset to A"
       });
     } catch (error) {
       console.error("Error resetting grades:", error);
@@ -517,10 +764,9 @@ const GpaCalculator = () => {
     setSelection(updatedSelection);
     setShowNotification(false);
 
-    toast({
+    toastSuccess({
       title: "Courses Confirmed",
-      description: "Thank you for confirming the courses.",
-      variant: "default"
+      description: "Thank you for confirming the courses."
     });
   };
 
@@ -788,7 +1034,7 @@ const GpaCalculator = () => {
                         <Award className="w-6 h-6 mr-2" />
                         <span className="text-sm font-medium">Your GPA</span>
                       </div>
-                      <div className="text-3xl font-bold">{gpa.toFixed(2)}</div>
+                      <div className="text-3xl font-bold">{gpa.toFixed(1)}</div>
                       <div className="text-sm opacity-90">
                         {gpa >= 4.5 ? "Excellent!" : gpa >= 3.5 ? "Good!" : gpa >= 2.5 ? "Average" : "Needs Improvement"}
                     </div>
@@ -797,57 +1043,173 @@ const GpaCalculator = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="target" className="p-6">
-                <div className="text-center mb-6">
-                  
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">Set Your Target GPA</h2>
-                </div>
-
-                {/* Target GPA Input Section */}
-                <div className="max-w-lg mx-auto mb-8">
-                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                    <Label htmlFor="target-gpa" className="text-sm font-medium text-gray-700 mb-3 block">
-                      Target GPA (0.0 - 5.0)
-                    </Label>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Input
-                        id="target-gpa"
-                        type="number"
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        value={targetGpa}
-                        onChange={(e) => setTargetGpa(e.target.value)}
-                        placeholder="e.g., 4.0"
-                        className="text-center text-lg font-medium border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <Button
-                        onClick={generateTargetGrades}
-                        disabled={isGeneratingGrades || !targetGpa}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGeneratingGrades ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Generate Grades
-                          </>
+              <TabsContent value="target" className="p-3 sm:p-6">
+                {/* Target GPA Input/Display Section */}
+                <div className="max-w-sm sm:max-w-md mx-auto mb-4 sm:mb-8">
+                  {!targetGpaSet || isEditingTarget ? (
+                    // Input Card - Narrow and attractive
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg sm:rounded-xl p-3 sm:p-6 border border-blue-200 shadow-lg"
+                    >
+                      <div className="text-center mb-3 sm:mb-4">
+                        <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                          <Target className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                        </div>
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Set Target GPA</h3>
+                      </div>
+                      
+                      <div className="space-y-3 sm:space-y-4">
+                        <div>
+                          <Input
+                            id="target-gpa"
+                            type="number"
+                            min="0"
+                            max="5"
+                            step="0.1"
+                            value={targetGpa}
+                            onChange={(e) => setTargetGpa(e.target.value)}
+                            placeholder="e.g., 4.0"
+                            className="text-center text-lg sm:text-xl font-bold border-2 border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-10 sm:h-12"
+                          />
+                        </div>
+                        
+                        {/* Validation Message */}
+                        {targetGpa && parseFloat(targetGpa) >= 0 && parseFloat(targetGpa) <= 5 && (
+                          <div className="mt-2 sm:mt-3">
+                            {(() => {
+                              const validation = validateTargetGPA(parseFloat(targetGpa));
+                              return (
+                                <div className={`p-2 sm:p-3 rounded-lg text-xs sm:text-sm ${
+                                  validation.isAchievable 
+                                    ? 'bg-green-50 border border-green-200 text-green-700' 
+                                    : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                                }`}>
+                                  <div className="flex items-center gap-1 sm:gap-2">
+                                    {validation.isAchievable ? (
+                                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                                    ) : (
+                                      <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                                    )}
+                                    <span className="font-medium text-xs sm:text-sm">
+                                      {validation.isAchievable ? 'Achievable' : 'Not Achievable'}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-xs">
+                                    {validation.message}
+                                  </p>
+                                  {!validation.isAchievable && (
+                                    <p className="mt-1 text-xs font-medium">
+                                      Max: {validation.maxPossibleGPA.toFixed(1)} | 
+                                      Min: {validation.minPossibleGPA.toFixed(1)}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         )}
-                      </Button>
-                    </div>
-                  </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={generateTargetGrades}
+                            disabled={isGeneratingGrades || !targetGpa || (targetGpa && !validateTargetGPA(parseFloat(targetGpa)).isAchievable)}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-8 sm:h-10 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                          >
+                            {isGeneratingGrades ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                                <span className="hidden sm:inline">Generating...</span>
+                                <span className="sm:hidden">Gen...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">Generate Grades</span>
+                                <span className="sm:hidden">Generate</span>
+                              </>
+                            )}
+                          </Button>
+                          
+                          {isEditingTarget && (
+                            <Button
+                              onClick={handleCancelEditTarget}
+                              variant="outline"
+                              className="px-3 sm:px-4 h-8 sm:h-10 border-gray-300 text-gray-600 hover:bg-gray-50 text-sm sm:text-base"
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    // Display Card - Simple and clean
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg sm:rounded-xl p-3 sm:p-6 border border-green-200 shadow-lg"
+                    >
+                      <div className="text-center">
+                        <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                          <CheckCircle className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                        </div>
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Target GPA Set</h3>
+                        <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-2">{targetGpaSet}</div>
+                        
+                        {/* Validation Status */}
+                        {targetGpaValidation && (
+                          <div className={`mt-2 sm:mt-3 p-2 sm:p-3 rounded-lg text-xs sm:text-sm ${
+                            targetGpaValidation.isAchievable 
+                              ? 'bg-green-50 border border-green-200 text-green-700' 
+                              : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                          }`}>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              {targetGpaValidation.isAchievable ? (
+                                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                              ) : (
+                                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                              )}
+                              <span className="font-medium text-xs sm:text-sm">
+                                {targetGpaValidation.isAchievable ? 'Currently Achievable' : 'Not Achievable'}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs">
+                              {targetGpaValidation.message}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 sm:mt-4">
+                          <Button
+                            onClick={handleEditTarget}
+                            variant="outline"
+                            size="sm"
+                            className="border-green-300 text-green-700 hover:bg-green-50 text-xs sm:text-sm h-7 sm:h-8"
+                          >
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                            Edit Target
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Course Cards Section */}
-                <div className="mb-6">
+                <div className="mb-6" ref={gradesSectionRef}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">Course Grades</h3>
-                      <p className="text-gray-600 text-sm">Generated grades to achieve your target GPA</p>
+                      <p className="text-gray-600 text-sm">
+                        {targetGpaSet ? `Generated grades to achieve GPA ${targetGpaSet}` : 'Generated grades to achieve your target GPA'}
+                        {userEditedGrades.size > 0 && (
+                          <span className="text-blue-600 font-medium ml-1">
+                            ({userEditedGrades.size} manually edited)
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div className="flex gap-2 mt-4 sm:mt-0">
                       <Button
@@ -879,64 +1241,91 @@ const GpaCalculator = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {originalCourses.map((course, index) => (
-                      <motion.div
-                        key={course.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-white border border-gray-200 rounded-md overflow-hidden hover:bg-blue-50 transition-colors"
-                      >
-                        <div className="flex items-center py-2 px-3 border-b border-gray-100">
-                          <div className="w-16 shrink-0">
-                            <span className="text-xs font-semibold text-blue-600">{course.code}</span>
+                  <div className="space-y-3" data-grades-section="true">
+                    {originalCourses.map((course, index) => {
+                      const isUserEdited = userEditedGrades.has(course.id);
+                      const currentGrade = grades.find(g => g.courseId === course.id)?.grade || "A";
+                      
+                      return (
+                        <motion.div
+                          key={course.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className={`bg-white border rounded-md overflow-hidden transition-all duration-200 ${
+                            isUserEdited 
+                              ? 'border-blue-300 bg-blue-50/30 shadow-sm' 
+                              : 'border-gray-200 hover:bg-blue-50'
+                          }`}
+                        >
+                          <div className="flex items-center py-2 px-3 border-b border-gray-100">
+                            <div className="w-16 shrink-0">
+                              <span className="text-xs font-semibold text-blue-600">{course.code}</span>
+                            </div>
+                            <div className="flex-1 min-w-0 px-2">
+                              <span className="text-xs text-gray-700 truncate block">{course.name}</span>
+                            </div>
+                            <div className="w-12 text-center shrink-0">
+                              <span className="text-xs text-gray-500">{course.credits}</span>
+                            </div>
+                            <div className="w-16 shrink-0 ml-2 relative">
+                              <Select 
+                                value={currentGrade}
+                                onValueChange={(value) => handleGradeChange(course.id, value)}
+                              >
+                                <SelectTrigger className={`w-full h-6 px-2 text-xs ${
+                                  isUserEdited 
+                                    ? 'border-blue-400 bg-blue-50' 
+                                    : 'border-gray-300'
+                                }`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="min-w-[60px]">
+                                  {gradePoints.map(gp => (
+                                    <SelectItem key={gp.grade} value={gp.grade} className="text-xs">
+                                      {gp.grade}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {isUserEdited && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0 px-2">
-                            <span className="text-xs text-gray-700 truncate block">{course.name}</span>
-                          </div>
-                          <div className="w-12 text-center shrink-0">
-                            <span className="text-xs text-gray-500">{course.credits}</span>
-                          </div>
-                          <div className="w-16 shrink-0 ml-2">
-                            <Select 
-                              value={grades.find(g => g.courseId === course.id)?.grade || "A"}
-                              onValueChange={(value) => handleGradeChange(course.id, value)}
-                            >
-                              <SelectTrigger className="w-full h-6 px-2 text-xs border-gray-300">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="min-w-[60px]">
-                                {gradePoints.map(gp => (
-                                  <SelectItem key={gp.grade} value={gp.grade} className="text-xs">
-                                    {gp.grade}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Calculate and Display GPA */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button
-                    onClick={calculateGpa}
-                    disabled={isCalculating}
+                    onClick={targetGpaSet ? generateTargetGrades : calculateGpa}
+                    disabled={isCalculating || isGeneratingGrades}
                     className="flex-1 btn-white-primary py-3 text-lg font-medium"
                   >
-                    {isCalculating ? (
+                    {isCalculating || isGeneratingGrades ? (
                       <>
                         <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                        Calculating...
+                        {targetGpaSet ? 'Regenerating...' : 'Calculating...'}
                       </>
                     ) : (
                       <>
-                        <Calculator className="w-5 h-5 mr-2" />
-                        Calculate Current GPA
+                        {targetGpaSet ? (
+                          <>
+                            <RefreshCw className="w-5 h-5 mr-2" />
+                            Regenerate Grades
+                          </>
+                        ) : (
+                          <>
+                            <Calculator className="w-5 h-5 mr-2" />
+                            Calculate GPA
+                          </>
+                        )}
                       </>
                     )}
                   </Button>
@@ -951,7 +1340,7 @@ const GpaCalculator = () => {
                         <Award className="w-6 h-6 mr-2" />
                         <span className="text-sm font-medium">Current GPA</span>
                       </div>
-                      <div className="text-3xl font-bold">{gpa.toFixed(2)}</div>
+                      <div className="text-3xl font-bold">{gpa.toFixed(1)}</div>
                       <div className="text-sm opacity-90">
                         {gpa >= 4.5 ? "Excellent!" : gpa >= 3.5 ? "Good!" : gpa >= 2.5 ? "Average" : "Needs Improvement"}
                       </div>

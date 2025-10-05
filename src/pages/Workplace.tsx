@@ -477,21 +477,55 @@ const Workplace: React.FC = () => {
       });
 
       // Send batch request to backend using academicApi
+      console.log('Calling academicApi.saveCoursesBatch with:', formattedCourses);
       const result = await academicApi.saveCoursesBatch(formattedCourses);
       console.log('Batch save result:', result);
       
-      // Refresh student courses to show the saved ones
-      await loadStudentCourses();
-      
-      toast.success('Courses saved successfully!');
-      // After saving, refresh profile and courses, then show enrolled courses
-      await loadStudentProfile();
-      await loadStudentCourses();
-      setRoadmapHidden(false);
-      setCurrentStep(6);
+      // Check if the response indicates success
+      if (result && (result.message || result.courses)) {
+        console.log('Backend save successful, refreshing data...');
+        
+        try {
+          // Refresh student courses to show the saved ones
+          await loadStudentCourses();
+          console.log('loadStudentCourses completed successfully');
+          
+          toast.success('Courses saved successfully!');
+          
+          // After saving, refresh profile and courses, then show enrolled courses
+          await loadStudentProfile();
+          console.log('loadStudentProfile completed successfully');
+          
+          await loadStudentCourses();
+          console.log('Second loadStudentCourses completed successfully');
+          
+          setRoadmapHidden(false);
+          setCurrentStep(6);
+        } catch (refreshError) {
+          console.error('Error during data refresh after successful save:', refreshError);
+          // Still show success for the save, but warn about refresh
+          toast.success('Courses saved successfully!');
+          toast.error('Note: Some data may not be up to date. Please refresh the page.');
+          setRoadmapHidden(false);
+          setCurrentStep(6);
+        }
+      } else {
+        throw new Error('Invalid response from backend');
+      }
     } catch (error) {
       console.error('Error saving courses:', error);
-      toast.error('Failed to save courses');
+      
+      // More detailed error logging
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      } else if (error.request) {
+        console.error('Error request:', error.request);
+      } else {
+        console.error('Error message:', error.message);
+      }
+      
+      toast.error(`Failed to save courses: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -634,8 +668,7 @@ const Workplace: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900">Your Academic Program</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">University</p>
                       <p className="text-sm font-semibold text-gray-900">{studentProfile.university?.name || '—'}</p>

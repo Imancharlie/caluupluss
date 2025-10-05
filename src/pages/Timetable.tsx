@@ -567,7 +567,7 @@ const Timetable: React.FC = () => {
     
     setClickCount(prev => ({ ...prev, [cellKey]: newCount }));
     
-    if (newCount >= 3) {
+    if (newCount >= 2) {
       setPendingTime(time);
       setPendingDay(day);
       setShowAddModal(true);
@@ -1088,7 +1088,7 @@ const Timetable: React.FC = () => {
             e.stopPropagation();
             handleEmptyCellClick(time, day);
           }}
-          title="Click 3 times to add class"
+          title="Click 2 times to add class"
           style={{
             height: `${36 * duration}px`,
             minHeight: `${36 * duration}px`,

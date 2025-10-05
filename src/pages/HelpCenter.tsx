@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Mail, MessageSquare, Phone, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { useAppStore } from '@/store';
+import api from '@/lib/api';
 
 const faqs = [
   { q: 'How do I reset my password?', a: 'Go to Forgot Password from the login page, enter your email, and follow the instructions sent to your inbox.' },
@@ -15,14 +18,88 @@ const faqs = [
 
 const HelpCenter: React.FC = () => {
   const navigate = useNavigate();
+  const { toastSuccess, toastError } = useToast();
+  const { user } = useAppStore();
   const groupedFaqs = useMemo(() => [faqs.slice(0, Math.ceil(faqs.length / 2)), faqs.slice(Math.ceil(faqs.length / 2))], []);
   const [subject, setSubject] = useState('General Inquiry');
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSend = () => {
-    const to = 'kodinsoftwares@gmail.com';
-    const mailto = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-    window.location.href = mailto;
+  const handleSend = async () => {
+    if (!message.trim()) {
+      toastError({ title: 'Message Required', description: 'Please enter your message.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Check if user email is valid, otherwise use fallback
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const userEmail = user?.email && emailRegex.test(user.email) ? user.email : 'anonymous@example.com';
+      const userName = user?.first_name && user?.last_name 
+        ? `${user.first_name} ${user.last_name}` 
+        : user?.username || 'Anonymous User';
+
+      const messageData = {
+        subject,
+        message,
+        user_email: userEmail,
+        user_name: userName
+      };
+
+      // Debug: Log what we're sending
+      console.log('Sending message data:', messageData);
+      console.log('User data:', { email: user?.email, display_name: user?.display_name, first_name: user?.first_name, last_name: user?.last_name, username: user?.username });
+
+      const response = await api.post('/help-center/messages/', messageData);
+      
+      if (response.data.success) {
+        toastSuccess({ 
+          title: 'Message Sent!', 
+          description: `Ticket #${response.data.ticket_number} - ${response.data.message}` 
+        });
+      } else {
+        throw new Error(response.data.message || 'Failed to send message');
+      }
+      
+      // Reset form
+      setSubject('General Inquiry');
+      setMessage('');
+      
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      
+      // Log the full error response for debugging
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        console.error('Error response headers:', error.response.headers);
+        
+        // Log specific validation errors
+        if (error.response.data.errors) {
+          console.error('Validation errors:', error.response.data.errors);
+        }
+      }
+      
+      // Extract error message from response
+      let errorMessage = 'Please try again or contact us directly.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toastError({ 
+        title: 'Failed to Send', 
+        description: errorMessage
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -69,12 +146,12 @@ const HelpCenter: React.FC = () => {
                 onChange={(e) => setSubject(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-caluu-blue focus:border-transparent outline-none bg-white text-sm"
               >
-                <option>General Inquiry</option>
-                <option>Account & Login</option>
-                <option>Timetable Help</option>
-                <option>GPA Calculator</option>
-                <option>Bug Report</option>
-                <option>Feature Request</option>
+                <option value="General Inquiry">💬 General Question</option>
+                <option value="Account & Login">🔐 Account & Login Issues</option>
+                <option value="Timetable Help">📅 Timetable & Classes</option>
+                <option value="GPA Calculator">📊 GPA Calculator Help</option>
+                <option value="Bug Report">🐛 Bug Report</option>
+                <option value="Feature Request">💡 Feature Request</option>
               </select>
             </div>
             <div>
@@ -88,8 +165,12 @@ const HelpCenter: React.FC = () => {
               />
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSend} className="bg-caluu-blue hover:bg-caluu-blue-light text-white h-9 px-4 text-sm">
-                Send Message
+              <Button 
+                onClick={handleSend} 
+                disabled={isSubmitting}
+                className="bg-caluu-blue hover:bg-caluu-blue-light text-white h-9 px-4 text-sm disabled:opacity-50"
+              >
+                {isSubmitting ? 'Sending...' : 'Send Message'}
               </Button>
             </div>
           </CardContent>

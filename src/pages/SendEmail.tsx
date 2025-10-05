@@ -87,7 +87,7 @@ const SendEmail = () => {
       });
 
       if (result.successful_sends > 0) {
-        toast.success(`Email sent successfully to ${result.successful_sends} users`);
+        toastSuccess({ title: `Email sent successfully to ${result.successful_sends} users` });
       }
       
       if (result.failed_sends > 0) {

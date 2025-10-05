@@ -92,7 +92,7 @@ const Settings: React.FC = () => {
         ...formData,
       });
       
-      toast.success('Settings saved successfully');
+      toastSuccess({ title: 'Settings saved successfully' });
       setIsEditing(false);
     } catch (error) {
       toast.error('Failed to save settings');
@@ -121,7 +121,7 @@ const Settings: React.FC = () => {
   };
 
   const handleExportData = () => {
-    toast.success('Data export started. You will receive an email when ready.');
+    toastSuccess({ title: 'Data export started. You will receive an email when ready.' });
   };
 
   return (
@@ -524,7 +524,7 @@ const Settings: React.FC = () => {
                           return;
                         }
                         await changePassword(passwordForm);
-                        toast.success('Password changed successfully');
+                        toastSuccess({ title: 'Password changed successfully' });
                         setPasswordForm({ old_password: '', new_password: '', new_password_confirm: '' });
                       } catch (err: any) {
                         const msg = err?.response?.data?.error || err?.response?.data?.detail || 'Failed to change password';

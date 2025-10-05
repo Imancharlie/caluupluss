@@ -120,9 +120,12 @@ export const useAppStore = create<AppStore>()(
 
       fetchUserBasicDetails: async () => {
         try {
-          const response = await api.get('/api/user/basic-details/');
-          const data = response.data as Partial<User>;
-          set({ user: { ...(get().user || {}), ...data } });
+          // Note: The /api/user/basic-details/ endpoint doesn't exist in the backend
+          // User data should be available from login response
+          console.log('fetchUserBasicDetails called but endpoint not implemented');
+          console.log('Current user data:', get().user);
+          // Don't make the API call since the endpoint doesn't exist
+          // This prevents data corruption from failed API calls
         } catch (error) {
           console.error('Failed to fetch basic details:', error);
         }

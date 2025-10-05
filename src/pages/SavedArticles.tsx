@@ -17,7 +17,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 // Tag type from backend: can be a string or an object with name/slug
 type TagLike = string | { name?: string; slug?: string };
@@ -47,6 +47,7 @@ interface SavedArticle {
 
 const SavedArticles: React.FC = () => {
   const navigate = useNavigate();
+  const { toast, toastSuccess, toastError } = useToast();
   const [savedArticles, setSavedArticles] = useState<SavedArticle[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -92,7 +93,7 @@ const SavedArticles: React.FC = () => {
         
         // Update local state
         setSavedArticles(prev => prev.filter(article => article.id !== articleId));
-        toast.success('Article removed from saved');
+        toastSuccess({ title: 'Article removed from saved' });
       }
     } catch (error) {
       console.error('Error removing article:', error);
@@ -106,7 +107,7 @@ const SavedArticles: React.FC = () => {
       try {
         localStorage.removeItem('savedArticles');
         setSavedArticles([]);
-        toast.success('All saved articles cleared');
+        toastSuccess({ title: 'All saved articles cleared' });
       } catch (error) {
         console.error('Error clearing articles:', error);
         toast.error('Failed to clear articles');
@@ -140,7 +141,7 @@ const SavedArticles: React.FC = () => {
       } else {
         // Fallback to copying to clipboard
         await navigator.clipboard.writeText(`${window.location.origin}/articles/${article.id}`);
-        toast.success('Link copied to clipboard!');
+        toastSuccess({ title: 'Link copied to clipboard!' });
       }
     } catch (error) {
       console.error('Failed to share:', error);
@@ -392,4 +393,5 @@ const SavedArticles: React.FC = () => {
 };
 
 export default SavedArticles;
+
 

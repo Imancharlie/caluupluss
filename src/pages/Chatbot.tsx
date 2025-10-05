@@ -78,7 +78,7 @@ const Chatbot: React.FC = () => {
       setConversation(prev => prev ? { ...prev, messages: prev.messages.map(m => m.id === localId ? { ...m, _status: 'pending' } : m) } : prev);
       const res = await api.post(`/chatbot/conversations/${conversation.id}/send_message/`, { message: text });
       setConversation(res.data as Conversation);
-      toast.success('Message resent');
+      toastSuccess({ title: 'Message resent' });
     } catch (e: unknown) {
       setConversation(prev => prev ? { ...prev, messages: prev.messages.map(m => m.id === localId ? { ...m, _status: 'failed' } : m) } : prev);
       const err = e as { response?: { data?: { error?: string; detail?: string } } };

@@ -42,7 +42,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, onClose }) => {
     { name: 'GPA Calculator', href: '/calculator', icon: Calculator },
     { name: 'Timetable', href: '/timetable', icon: Calendar },
     { name: 'Mr Caluu', href: '/chatbot', icon: BookOpen },
-    { name: 'Voting', href: '/voting', icon: FileText },
     { name: 'My Future', href: '/career', icon: Award },
     { name: 'Articles', href: '/articles', icon: Newspaper },
     { name: 'Help Center', href: '/help', icon: HelpCircle },

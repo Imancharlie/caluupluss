@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/store';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { AxiosError } from 'axios';
 import academicApi from '@/services/academicApi';
 
@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { setUser: setStoreUser } = useAppStore();
+  const { toast, toastSuccess, toastError } = useToast();
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -55,14 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const profile = await academicApi.getStudentProfile();
           
           if (profile) {
-            const userData = {
-              id: profile.id,
-              email: profile.university?.name || JSON.parse(savedUser).email,
-              display_name: profile.program?.name || JSON.parse(savedUser).display_name
-            };
+            // Use the saved user data from localStorage, not profile data
+            // Profile data contains academic info, not user personal info
+            const userData = JSON.parse(savedUser);
             setUser(userData);
             setStoreUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
+            // Don't overwrite user data with profile data
           }
         } catch (error: any) {
           // If profile doesn't exist (404), that's okay for new users
@@ -142,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setStoreUser(user as any);
       setLoading(false);
-      toast.success('Successfully signed in!');
+      toastSuccess({ title: 'Successfully signed in!' });
     } catch (error) {
       const axiosError = error as AxiosError<any>;
       console.error('[Auth] Login error details', {
@@ -151,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: axiosError.response?.headers,
       });
       if (axiosError.code === 'ERR_NETWORK') {
-        toast.error('Network error: Cannot connect to the server.');
+        toastError({ title: 'Network error: Cannot connect to the server.' });
       } else {
         const data = axiosError.response?.data as any;
         const messages: string[] = [];
@@ -161,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(data?.non_field_errors)) messages.push(...data.non_field_errors);
         if (data?.email) messages.push(`email: ${Array.isArray(data.email) ? data.email.join(', ') : String(data.email)}`);
         if (data?.password) messages.push(`password: ${Array.isArray(data.password) ? data.password.join(', ') : String(data.password)}`);
-        toast.error(messages.filter(Boolean).join(' | ') || 'Failed to sign in');
+        toastError({ title: messages.filter(Boolean).join(' | ') || 'Failed to sign in' });
       }
       throw error;
     }
@@ -178,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newUser);
         setStoreUser(newUser as any);
         setLoading(false);
-        toast.success('Account created! You are now signed in.');
+        toastSuccess({ title: 'Account created! You are now signed in.' });
       }
       return newUser;
     } catch (error) {
@@ -203,8 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Check for general error message
         if (errorData?.error) {
-          const errorMessage = errorData.error;
-          
+          const errorMessage = errorData.error         
           if (errorMessage.includes("already exists") || 
               errorMessage.includes("A user with this email already exists") ||
               errorMessage.includes("email already registered")) {
@@ -252,11 +250,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
-      toast.success('Successfully signed out!');
+      toastSuccess({ title: 'Successfully signed out!' });
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       const errorMessage = axiosError.response?.data?.error || 'Failed to sign out';
-      toast.error(errorMessage);
+      toastError({ title: errorMessage });
       
       // Even if the server request fails, clear the local storage
       localStorage.removeItem('token');
@@ -269,16 +267,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Note: Password reset endpoints not implemented in your backend yet
       // This is a placeholder for future implementation
-      toast.success('Password reset feature coming soon');
+      toastSuccess({ title: 'Password reset feature coming soon' });
     } catch (error) {
       console.error("Password reset request error:", error);
       const axiosError = error as AxiosError<ApiError>;
       
       if (axiosError.code === 'ERR_NETWORK') {
-        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+        toastError({ title: 'Network error: Cannot connect to the server. Please check your internet connection.' });
       } else {
         const errorMessage = axiosError.response?.data?.error || 'Failed to request password reset';
-        toast.error(errorMessage);
+        toastError({ title: errorMessage });
       }
       throw error;
     }
@@ -288,16 +286,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Note: Password reset endpoints not implemented in your backend yet
       // This is a placeholder for future implementation
-      toast.success('Password reset feature coming soon');
+      toastSuccess({ title: 'Password reset feature coming soon' });
     } catch (error) {
       console.error("Password reset error:", error);
       const axiosError = error as AxiosError<ApiError>;
       
       if (axiosError.code === 'ERR_NETWORK') {
-        toast.error('Network error: Cannot connect to the server. Please check your internet connection.');
+        toastError({ title: 'Network error: Cannot connect to the server. Please check your internet connection.' });
       } else {
         const errorMessage = axiosError.response?.data?.error || 'Failed to reset password';
-        toast.error(errorMessage);
+        toastError({ title: errorMessage });
       }
       throw error;
     }
