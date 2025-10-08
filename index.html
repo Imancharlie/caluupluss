@@ -186,24 +186,76 @@
     
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Disable Service Worker: unregister any existing workers -->
+    <!-- Register Service Worker for PWA -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
         });
       }
     </script>
-    
-    <!-- Google Analytics (replace with your tracking ID) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-S77CM3ST7W"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'GA_MEASUREMENT_ID');
+      gtag('config', 'G-S77CM3ST7W', {
+        page_title: document.title,
+        page_location: window.location.href,
+        custom_map: {
+          'custom_parameter_1': 'caluu_app'
+        }
+      });
+
+      // Track page views
+      gtag('event', 'page_view', {
+        page_title: document.title,
+        page_location: window.location.href
+      });
+
+      // Track user interactions
+      document.addEventListener('DOMContentLoaded', function() {
+        // Track button clicks
+        document.querySelectorAll('button, a[href^="/"]').forEach(element => {
+          element.addEventListener('click', function(e) {
+            const target = e.target.closest('button, a');
+            if (target) {
+              gtag('event', 'click', {
+                event_category: 'engagement',
+                event_label: target.textContent.trim() || target.href || 'button'
+              });
+            }
+          });
+        });
+
+        // Track form submissions
+        document.querySelectorAll('form').forEach(form => {
+          form.addEventListener('submit', function(e) {
+            gtag('event', 'form_submit', {
+              event_category: 'engagement',
+              event_label: form.className || 'form'
+            });
+          });
+        });
+
+        // Track time spent on page
+        let startTime = Date.now();
+        window.addEventListener('beforeunload', function() {
+          const timeSpent = Math.round((Date.now() - startTime) / 1000);
+          gtag('event', 'time_on_page', {
+            event_category: 'engagement',
+            value: timeSpent
+          });
+        });
+      });
     </script>
   </body>
 </html>

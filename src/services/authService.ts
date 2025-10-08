@@ -29,6 +29,29 @@ export async function updateProfile(data: {
   }
 }
 
+// Update basic account fields for the logged-in user
+export async function updateUser(data: {
+  email?: string;
+  display_name?: string;
+  phone_number?: string;
+}): Promise<{ email?: string; display_name?: string; phone_number?: string }>
+{
+  try {
+    // Accept both PATCH and POST; prefer PATCH
+    const response = await api.patch('/user/update/', data);
+    return response.data || data;
+  } catch (error) {
+    // Fallback to POST if PATCH not allowed on backend
+    try {
+      const response = await api.post('/user/update/', data);
+      return response.data || data;
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      throw err;
+    }
+  }
+}
+
 
 
 

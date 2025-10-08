@@ -12,6 +12,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/layout/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 const SplashScreen = lazy(() => import("./pages/SplashScreen"));
+const Landing = lazy(() => import("./pages/Landing"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EmailVerificationPage = lazy(() => import("./pages/activate_page"));
 const SelectionPage = lazy(() => import("./pages/SelectionPage"));
@@ -42,6 +43,13 @@ const SavedArticles = lazy(() => import('./pages/SavedArticles'));
 const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
 const Profile = lazy(() => import('./pages/Profile'));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const StaffDashboard = lazy(() => import('./pages/StaffDashboard'));
+const StaffStudents = lazy(() => import('./pages/StaffStudents.tsx'));
+const StaffArticles = lazy(() => import('./pages/StaffArticles.tsx'));
+const StaffSlides = lazy(() => import('./pages/StaffSlides'));
+const StaffNotifications = lazy(() => import('./pages/StaffNotifications'));
+const StaffQuotes = lazy(() => import('./pages/StaffQuotes'));
+const StaffUniversity = lazy(() => import('./pages/StaffUniversity.tsx'));
 import './styles/globals.css';
 
 // Create QueryClient instance
@@ -62,7 +70,8 @@ function AppRoutes() {
       <Suspense fallback={<div />}> 
       <Routes location={location} key={location.pathname}>
         {/* Public Routes */}
-        <Route path="/" element={<SplashScreen />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/splash" element={<SplashScreen />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -216,6 +225,76 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <Settings />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/students"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffStudents />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/articles"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffArticles />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/slides"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffSlides />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/notifications"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffNotifications />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/quotes"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffQuotes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/university"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <StaffUniversity />
               </Layout>
             </ProtectedRoute>
           }

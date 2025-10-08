@@ -75,7 +75,16 @@ export async function fetchSlides(): Promise<Slide[]> {
       // Convert relative URLs to absolute URLs (only if we got a relative URL)
       if (imageUrl && imageUrl.startsWith('/media/')) {
         // Since we're using a proxy, we need to construct the full backend URL
-        imageUrl = `http://localhost:8000${imageUrl}`;
+        // In production, this should use the actual backend domain
+        const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        imageUrl = `${backendUrl}${imageUrl}`;
+      }
+
+      // Also handle absolute URLs that might be pointing to localhost in development
+      if (imageUrl && imageUrl.includes('localhost:8000')) {
+        // In production, these should be served through the proxy
+        // For now, we'll keep the localhost URLs as-is since Netlify will proxy them
+        console.log('Keeping localhost URL for proxy:', imageUrl);
       }
       
       console.log(`Slide "${slide.title}":`, {

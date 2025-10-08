@@ -47,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile = false, onClose }) => {
     { name: 'Help Center', href: '/help', icon: HelpCircle },
     { name: 'Settings', href: '/settings', icon: Settings },
     ...(user?.is_staff ? [{ name: 'Admin Dashboard', href: '/admin', icon: Shield }] : []),
+    ...(user?.is_staff ? [{ name: 'Staff', href: '/staff', icon: Shield }] : []),
   ];
 
   const isActive = (href: string) => location.pathname === href;

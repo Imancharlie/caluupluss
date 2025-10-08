@@ -16,7 +16,7 @@ const CompleteProfile: React.FC = () => {
   const [semester, setSemester] = useState<number>(1);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { loadUniversities(); }, [loadUniversities]);
+  useEffect(() => { loadUniversities(false); }, [loadUniversities]);
   useEffect(() => { if (universityId) loadColleges(universityId); }, [universityId, loadColleges]);
   useEffect(() => { if (collegeId) loadPrograms(collegeId); }, [collegeId, loadPrograms]);
 

@@ -432,11 +432,11 @@ const Dashboard: React.FC = () => {
                     displaySlides.map((slide, i) => {
                       const imageUrl = slide.image || slide.image_url || slide.display_image || slide.image_url_display;
                       const hasImage = imageUrl && imageUrl.trim() !== '';
-                      
+
                       return (
                       <CarouselItem key={slide.id || i}>
-                          <div 
-                            className={`relative overflow-hidden rounded-2xl shadow-lg text-white h-48 md:h-64 lg:h-72 ${!hasImage ? `bg-gradient-to-r ${slide.background_gradient}` : ''}`}
+                          <div
+                            className={`relative overflow-hidden rounded-2xl shadow-lg text-white h-48 md:h-64 lg:h-72 ${!hasImage ? `bg-gradient-to-br ${slide.background_gradient}` : ''}`}
                             style={{
                               backgroundColor: hasImage ? 'transparent' : undefined,
                               WebkitTransform: 'translateZ(0)',
@@ -446,10 +446,10 @@ const Dashboard: React.FC = () => {
                             }}
                           >
                             {hasImage && (
-                              <img 
-                                src={imageUrl} 
-                                alt={slide.title} 
-                                className="absolute inset-0 w-full h-full object-cover scale-105" 
+                              <img
+                                src={imageUrl}
+                                alt={slide.title}
+                                className="absolute inset-0 w-full h-full object-cover scale-105 transition-opacity duration-300"
                                 style={{
                                   zIndex: 1,
                                   display: 'block',
@@ -462,39 +462,60 @@ const Dashboard: React.FC = () => {
                                   minWidth: '100%',
                                   minHeight: '100%'
                                 }}
-                                onLoad={() => handleImageLoad(imageUrl)}
-                                onError={(e) => handleImageError(e, slide)}
+                                onLoad={(e) => {
+                                  console.log(`✅ Image loaded successfully: ${imageUrl}`);
+                                  (e.target as HTMLImageElement).style.opacity = '1';
+                                }}
+                                onError={(e) => {
+                                  console.error(`Failed to load image: ${imageUrl}`, e);
+                                  // Hide the image and show gradient background
+                                  const imgElement = e.target as HTMLImageElement;
+                                  const parentElement = imgElement.parentElement!;
+
+                                  // Hide the image
+                                  imgElement.style.display = 'none';
+
+                                  // Apply gradient background to parent
+                                  parentElement.className = parentElement.className.replace(/bg-gradient-to-[a-z-]+/g, '') + ` bg-gradient-to-br ${slide.background_gradient}`;
+
+                                  // Also update the overlay to be less dark since we're showing gradient
+                                  const overlay = parentElement.querySelector('.absolute.inset-0.bg-gradient-to-t');
+                                  if (overlay) {
+                                    overlay.className = overlay.className.replace(/from-black\/\d+/g, 'from-transparent').replace(/via-black\/\d+/g, 'via-transparent');
+                                  }
+                                }}
                               />
-                          )}
-                          <div className="relative z-10 p-8 md:p-12 h-full flex flex-col md:flex-row items-start md:items-center gap-6">
-                            <div className="flex-1">
-                              <h3 className="text-xl md:text-2xl font-bold drop-shadow-sm">{slide.title}</h3>
-                              <p className="mt-2 text-sm md:text-base opacity-95 max-w-3xl">{slide.description}</p>
-                            </div>
-                            <div className="flex gap-3">
-                              {slide.link_url && (
-                                <Button 
-                                  size="sm" 
-                                  variant="secondary" 
-                                  className="bg-white/90 text-gray-900 hover:bg-white" 
-                                  data-action-button="true"
-                                  data-href={slide.link_url}
-                                  onClick={() => { window.location.href = slide.link_url; }}
+                            )}
+                            <div className={`absolute inset-0 bg-gradient-to-t transition-opacity duration-300 ${hasImage ? 'from-black/80 via-black/30 to-transparent' : 'from-transparent via-transparent to-transparent'}`}></div>
+                            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 h-full flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+                              <div className="flex-1">
+                                <h3 className="text-lg sm:text-xl md:text-2xl font-bold drop-shadow-sm leading-tight">{slide.title}</h3>
+                                <p className="mt-1 sm:mt-2 text-sm sm:text-base md:text-lg opacity-95 max-w-3xl leading-relaxed">{slide.description}</p>
+                              </div>
+                              <div className="flex gap-2 sm:gap-3">
+                                {slide.link_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="bg-white/90 text-gray-900 hover:bg-white shadow-lg backdrop-blur-sm"
+                                    data-action-button="true"
+                                    data-href={slide.link_url}
+                                    onClick={() => { window.location.href = slide.link_url; }}
+                                  >
+                                    Open
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-transparent border-white/70 text-white hover:bg-white/10 backdrop-blur-sm"
+                                  onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
                                 >
-                                  Open
+                                  Learn more
                                 </Button>
-                              )}
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="bg-transparent border-white/70 text-white hover:bg-white/10" 
-                                onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
-                              >
-                                Learn more
-                              </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
                       </CarouselItem>
                       );
                     })

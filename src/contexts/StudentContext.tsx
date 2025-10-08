@@ -149,14 +149,17 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Load universities
-  const loadUniversities = useCallback(async () => {
+  const loadUniversities = useCallback(async (showErrorToast: boolean = true) => {
     setUniversitiesLoading(true);
     try {
       const data = await academicApi.getUniversities();
       setUniversities(extractArray<University>(data as unknown));
     } catch (error) {
       console.error('Error loading universities:', error);
-      toastError({ title: 'Failed to load universities' });
+      // Only show error toast if explicitly requested (not during initial load)
+      if (showErrorToast) {
+        toastError({ title: 'Failed to load universities' });
+      }
     } finally {
       setUniversitiesLoading(false);
     }
@@ -402,9 +405,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
 
     try {
       baseDataLoadedRef.current = true;
+      // Load profile and universities in parallel, but don't show university errors during initial load
       await Promise.all([
         loadStudentProfile(),
-        loadUniversities()
+        loadUniversities(false) // Don't show error toast during initial load
       ]);
     } catch (error) {
       console.error('Error loading base data:', error);

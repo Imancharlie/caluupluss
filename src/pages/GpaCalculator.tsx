@@ -177,9 +177,7 @@ const GpaCalculator = () => {
     if (!isAchievable) {
       if (targetGpaValue > maxPossibleGPA) {
         message = `Target GPA ${targetGpaValue.toFixed(1)} is impossible to achieve. Maximum possible GPA with current grades is ${maxPossibleGPA.toFixed(1)}.`;
-      } else if (targetGpaValue < minPossibleGPA) {
-        message = `Target GPA ${targetGpaValue.toFixed(1)} is impossible to achieve. Minimum possible GPA with current grades is ${minPossibleGPA.toFixed(1)}.`;
-      }
+      } 
     } else {
       message = `Target GPA ${targetGpaValue.toFixed(1)} is achievable with current course setup.`;
     }

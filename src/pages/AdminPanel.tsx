@@ -17,6 +17,8 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { toast } from 'sonner';
 import academicApi from '@/services/academicApi';
+import api from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface StatCardProps {
   title: string;
@@ -51,6 +53,7 @@ const StatCard = ({ title, count, icon: Icon, trend, trendValue, className, onCl
 
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const { toastSuccess, toastError } = useToast();
   const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     counts: {
@@ -97,43 +100,7 @@ const AdminPanel = () => {
     try {
       setLoading(true);
       
-      // Debug: Check if token exists
-      const token = localStorage.getItem('token');
-      console.log('Token exists:', !!token);
-      console.log('Token value:', token);
-      
-      if (!token) {
-        toast.error('No authentication token found. Please log in again.');
-        navigate('/login');
-        return;
-      }
-
-      const response = await fetch('http://localhost:8000/api/admin/dashboard/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Authentication failed. Please log in again.');
-          localStorage.removeItem('token');
-          navigate('/login');
-          return;
-        }
-        if (response.status === 403) {
-          toast.error('Access denied. Admin privileges required.');
-          return;
-        }
-        throw new Error('Failed to fetch dashboard data');
-      }
-
-      const data = await response.json();
-      console.log('Dashboard data received:', data);
+      const { data } = await api.get('/admin/dashboard/');
       
       // Ensure the data structure matches our expected format
       setDashboardData({
@@ -151,9 +118,18 @@ const AdminPanel = () => {
         programsByCollege: data.programsByCollege || [],
         recent_activities: data.recent_activities || []
       });
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401) {
+        toast.error('Authentication failed. Please log in again.');
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else if (status === 403) {
+        toast.error('Access denied. Admin privileges required.');
+      } else {
+        console.error('Error fetching dashboard data:', error);
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -163,20 +139,9 @@ const AdminPanel = () => {
     if (!searchQuery.trim()) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/admin/search/?q=${encodeURIComponent(searchQuery)}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-
-      const data = await response.json();
-      // Handle search results
+      const { data } = await api.get(`/admin/search/`, { params: { q: searchQuery } });
       console.log('Search results:', data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search error:', error);
       toast.error('Search failed');
     }

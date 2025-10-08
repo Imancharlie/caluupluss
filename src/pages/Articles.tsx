@@ -317,7 +317,7 @@ interface ArticleCardProps {
   formatReadTime: (minutes: number) => string;
 }
 
-const ArticleCard: React.FC<ArticleCardProps> = ({
+const ArticleCardComponent: React.FC<ArticleCardProps> = ({
   article,
   viewMode,
   onLike,
@@ -455,6 +455,8 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     </Card>
   );
 };
+
+const ArticleCard = React.memo(ArticleCardComponent);
 
 export default Articles;
 

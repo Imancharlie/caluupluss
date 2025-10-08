@@ -4,11 +4,31 @@ import { Sparkles, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Temporarily suppress toast notifications during splash screen loading
+import { useToast } from "@/hooks/use-toast";
+
 const SplashScreen = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { toast } = useToast();
   const [startAnimation, setStartAnimation] = useState(false);
   const [animationCompleted, setAnimationCompleted] = useState(false);
+
+  // Suppress toast notifications during splash screen
+  useEffect(() => {
+    const originalToast = toast;
+    // Override toast methods to prevent showing errors during splash
+    Object.keys(toast).forEach(key => {
+      if (typeof toast[key] === 'function') {
+        toast[key] = () => {}; // No-op function
+      }
+    });
+
+    return () => {
+      // Restore original toast methods when component unmounts
+      Object.assign(toast, originalToast);
+    };
+  }, [toast]);
 
   useEffect(() => {
     const animationTimeout = setTimeout(() => {

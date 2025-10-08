@@ -2,7 +2,7 @@
   "name": "CALUU - Your Academic Best Friend",
   "short_name": "CALUU",
   "description": "Calculate your GPA and track your academic progress at UDSM",
-  "start_url": "/",
+  "start_url": "/splash",
   "display": "standalone",
   "background_color": "#1a365d",
   "theme_color": "#1a365d",
